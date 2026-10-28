@@ -7,7 +7,7 @@ INSERT INTO roles (id, nombre) VALUES
 
 -- 2. Permisos del sistema
 INSERT INTO permisos (id, clave) VALUES 
-(1, 'usuario_consular'),
+(1, 'usuario_consultar'),
 (2, 'usuario_crear'),
 (3, 'usuario_editar'),
 (4, 'usuario_desactivar'),
@@ -28,7 +28,7 @@ INSERT INTO permisos (id, clave) VALUES
 -- 3. Asignación de permisos a roles
 
 -- Permisos para el rol Administrador
-INSERT INTO roles_permisos (rol_id, permiso_id) VALUES 
+INSERT INTO rol_permiso (rol_id, permiso_id) VALUES 
 (1, 1),
 (1, 2),
 (1, 3),
@@ -48,14 +48,14 @@ INSERT INTO roles_permisos (rol_id, permiso_id) VALUES
 (1, 17);
 
 -- Permisos para el rol Operador
-INSERT INTO roles_permisos (rol_id, permiso_id) VALUES 
+INSERT INTO rol_permiso (rol_id, permiso_id) VALUES 
 (2, 9),
 (2, 13),
 (2, 14),
 (2, 15);
 
 -- 4. Categorías iniciales
-INSERT INTO categorias (id, nombre, dias_max_prestamo) VALUES 
+INSERT INTO categoria (id, nombre, dias_max_prestamo) VALUES 
 (1, 'Computadoras', 3),
 (2, 'Proyectores', 5),
 (3, 'Equipo de laboratorio', 7);
