@@ -139,7 +139,9 @@ CREATE TABLE `roles` (
 
 CREATE TABLE `rol_permiso` (
   `id` int(11) NOT NULL,
+  `rol_id` int(11) NOT NULL,
   `permiso_id` int(11) NOT NULL
+  
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -226,7 +228,9 @@ ALTER TABLE `roles`
 --
 ALTER TABLE `rol_permiso`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `permisos_rol_fk` (`permiso_id`);
+  ADD UNIQUE KEY `rol_permiso_uq` (`rol_id`, `permiso_id`),
+  ADD KEY `rol_permiso_rol_fk` (`rol_id`),
+  ADD KEY `rol_permiso_permiso_fk` (`permiso_id`);
 
 --
 -- Indices de la tabla `usuarios`
@@ -328,13 +332,16 @@ ALTER TABLE `prestamos`
 --
 ALTER TABLE `prestamo_detalle`
   ADD CONSTRAINT `prestamoD_equipo_fk` FOREIGN KEY (`equipo_id`) REFERENCES `equipos` (`id`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `prestamoD_prestamo_fk` FOREIGN KEY (`prestamo_id`) REFERENCES `prestamos` (`id`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `prestamoD_prestamo_fk` FOREIGN KEY (`prestamo_id`) REFERENCES `prestamos` (`id`) ON UPDATE CASCADE,
+  ADD PRIMARY KEY (`prestamo_id`, `equipo_id`),
+  ADD KEY `prestamo_detalle_equipo_fk` (`equipo_id`);
 
 --
 -- Filtros para la tabla `rol_permiso`
 --
 ALTER TABLE `rol_permiso`
-  ADD CONSTRAINT `permisos_rol_fk` FOREIGN KEY (`permiso_id`) REFERENCES `permisos` (`id`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `rol_permiso_rol_fk` FOREIGN KEY (`rol_id`) REFERENCES `roles` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `rol_permiso_permiso_fk` FOREIGN KEY (`permiso_id`) REFERENCES `permisos` (`id`) ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `usuarios`
