@@ -1,15 +1,14 @@
 <?php
 
-// 1. Cargar el manejo de sesiones
 require_once __DIR__ . '/../app/includes/auth.php';
 
-// 2. Aceptar solamente solicitudes POST
+// Aceptar solamente solicitudes POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: login.php');
     exit;
 }
 
-// 3. Comprobar el token CSRF
+// Comprobar el token CSRF
 if (
     !isset($_POST['csrf_token'], $_SESSION['csrf_token']) ||
     !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])
@@ -18,17 +17,17 @@ if (
     exit('Solicitud no válida.');
 }
 
-// 4. Obtener los datos del formulario
+// Obtener los datos del formulario
 $correo = trim($_POST['correo'] ?? '');
 $password = $_POST['password'] ?? '';
 
-// 5. Comprobar que los campos no estén vacíos
+// Comprobar que los campos no estén vacíos
 if ($correo === '' || $password === '') {
     header('Location: login.php?error=1');
     exit;
 }
 
-// 6. Buscar al usuario y comprobar su contraseña
+// Buscar al usuario
 try {
     $pdo = require __DIR__ . '/../app/config/config.php';
 
@@ -38,10 +37,7 @@ try {
             LIMIT 1";
 
     $consulta = $pdo->prepare($sql);
-
-    $consulta->execute([
-        'correo' => $correo
-    ]);
+    $consulta->execute(['correo' => $correo]);
 
     $usuario = $consulta->fetch();
 
@@ -51,23 +47,24 @@ try {
     exit('No fue posible iniciar sesión. Inténtalo más tarde.');
 }
 
-// 7. Verificar las credenciales
+// Verificar las credenciales
 if (!$usuario || !password_verify($password, $usuario['password_hash'])) {
     header('Location: login.php?error=1');
     exit;
 }
 
-// 8. Crear una nueva identificación de sesión
+// Regenerar el identificador de sesión
 session_regenerate_id(true);
 
-// 9. Guardar los datos del usuario en la sesión
+// Guardar los datos del usuario
 $_SESSION['id'] = (int) $usuario['id'];
 $_SESSION['nombre'] = $usuario['nombre'];
 $_SESSION['rol_id'] = (int) $usuario['rol_id'];
 
-// 10. Eliminar el token utilizado
+// Eliminar el token utilizado
 unset($_SESSION['csrf_token']);
 
-// 11. Redirigir después del inicio de sesión
+// Redirigir al panel principal
 header('Location: dashboard.php');
 exit;
+
