@@ -1,0 +1,66 @@
+ROLES
+- id
+- nombre
+
+USUARIOS
+- id
+- rol_id
+- nombre
+- correo
+- password_hash
+- activo
+- intentos_fallidos
+
+PERMISOS
+- id
+- clave
+
+ROL_PERMISO
+- rol_id
+- permiso_id
+
+AUTH_TOKENS
+- id
+- usuario_id
+- selector
+- validador_hash
+- expira_en
+
+BITACORA
+- id
+- usuario_id
+- accion
+- entidad
+- entidad_id
+- valores_antes
+- valores_despues
+- ip
+- creado_en
+
+CATEGORIAS
+- id
+- nombre
+- dias_max_prestamo
+
+EQUIPOS
+- id
+- categoria_id
+- codigo
+- nombre
+- estado
+- imagen_ruta
+- version
+- eliminado_en
+
+PRESTAMOS
+- id
+- usuario_id
+- operador_id
+- estado
+- fecha_inicio
+- fecha_fin
+
+PRESTAMO_DETALLE
+- prestamo_id
+- equipo_id
+- fecha_devolucion
