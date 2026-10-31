@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
 
 requiereLogin();
 
@@ -43,14 +44,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validaciones
     if ($nombre === '') {
         $error = 'El nombre es obligatorio.';
+
     } elseif (strlen($nombre) > 100) {
         $error = 'El nombre no puede superar los 100 caracteres.';
+
     } elseif ($dias === false || $dias === null || $dias <= 0) {
         $error = 'Los días máximos deben ser mayores que cero.';
+
     } else {
 
         try {
 
+            // Iniciar una transacción
+            $pdo->beginTransaction();
+
+            // Buscar la categoría y bloquear el registro
+            $sql = "SELECT id, nombre, dias_max_prestamo
+                    FROM categoria
+                    WHERE id = :id
+                    AND eliminado_en IS NULL
+                    FOR UPDATE";
+
+            $consulta = $pdo->prepare($sql);
+            $consulta->execute(['id' => $id]);
+
+            $categoriaAnterior = $consulta->fetch();
+
+            if (!$categoriaAnterior) {
+                throw new RuntimeException('La categoría no existe.');
+            }
+
+            // Guardar los valores anteriores
+            $valoresAntes = [
+                'nombre' => $categoriaAnterior['nombre'],
+                'dias_max_prestamo' => $categoriaAnterior['dias_max_prestamo']
+            ];
+
+            // Actualizar la categoría
             $sql = "UPDATE categoria
                     SET nombre = :nombre,
                         dias_max_prestamo = :dias
@@ -65,17 +95,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'id' => $id
             ]);
 
+            // Guardar los valores nuevos
+            $valoresDespues = [
+                'nombre' => $nombre,
+                'dias_max_prestamo' => $dias
+            ];
+
+            // Registrar la modificación en la bitácora
+            registrarBitacora(
+                $pdo,
+                'EDITAR',
+                'categoria',
+                $id,
+                $valoresAntes,
+                $valoresDespues
+            );
+
+            // Confirmar los cambios
+            $pdo->commit();
+
+            // Eliminar el token utilizado
             unset($_SESSION['csrf_token']);
 
+            // Redirigir al listado
             header('Location: listar.php?actualizado=1');
             exit;
 
-        } catch (PDOException $e) {
+        } catch (Throwable $e) {
+
+            // Deshacer los cambios si ocurre un error
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
 
             error_log($e->getMessage());
 
-            if ($e->getCode() === '23000') {
+            if ($e instanceof PDOException && $e->getCode() === '23000') {
                 $error = 'Ya existe una categoría con ese nombre.';
+            } elseif ($e instanceof RuntimeException) {
+                $error = $e->getMessage();
             } else {
                 http_response_code(500);
                 $error = 'No fue posible actualizar la categoría.';
@@ -134,7 +192,7 @@ if (empty($_SESSION['csrf_token'])) {
     <br><br>
 
     <?php if ($error !== ''): ?>
-        <p><?= htmlspecialchars($error) ?></p>
+        <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
     <?php endif; ?>
 
     <form method="POST" action="editar.php">
@@ -148,7 +206,7 @@ if (empty($_SESSION['csrf_token'])) {
         <input
             type="hidden"
             name="csrf_token"
-            value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>"
+            value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>"
         >
 
         <label for="nombre">Nombre de la categoría:</label>
@@ -158,7 +216,7 @@ if (empty($_SESSION['csrf_token'])) {
             id="nombre"
             name="nombre"
             maxlength="100"
-            value="<?= htmlspecialchars($nombre) ?>"
+            value="<?= htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') ?>"
             required
         >
 
@@ -173,7 +231,7 @@ if (empty($_SESSION['csrf_token'])) {
             id="dias_max_prestamo"
             name="dias_max_prestamo"
             min="1"
-            value="<?= htmlspecialchars((string) $dias) ?>"
+            value="<?= htmlspecialchars((string) $dias, ENT_QUOTES, 'UTF-8') ?>"
             required
         >
 
@@ -185,3 +243,4 @@ if (empty($_SESSION['csrf_token'])) {
 
 </body>
 </html>
+

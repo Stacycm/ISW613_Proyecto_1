@@ -1,6 +1,8 @@
+
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
 
 // Verificar que haya iniciado sesión
 requiereLogin();
@@ -44,6 +46,38 @@ try {
     // Conectar a la base de datos
     $pdo = require __DIR__ . '/../../app/config/config.php';
 
+    // Iniciar una transacción
+    $pdo->beginTransaction();
+
+    // Buscar el usuario y bloquear el registro
+    $sql = "SELECT id, nombre, correo, rol_id, activo
+            FROM usuarios
+            WHERE id = :id
+            FOR UPDATE";
+
+    $consulta = $pdo->prepare($sql);
+    $consulta->execute(['id' => $id]);
+
+    $usuarioAnterior = $consulta->fetch();
+
+    // Comprobar que el usuario exista
+    if (!$usuarioAnterior) {
+        throw new RuntimeException('El usuario no existe.');
+    }
+
+    // Comprobar que esté activo
+    if ((int) $usuarioAnterior['activo'] !== 1) {
+        throw new RuntimeException('El usuario ya está desactivado.');
+    }
+
+    // Guardar los valores anteriores
+    $valoresAntes = [
+        'nombre' => $usuarioAnterior['nombre'],
+        'correo' => $usuarioAnterior['correo'],
+        'rol_id' => $usuarioAnterior['rol_id'],
+        'activo' => $usuarioAnterior['activo']
+    ];
+
     // Desactivar el usuario
     $sql = "UPDATE usuarios
             SET activo = 0
@@ -55,13 +89,46 @@ try {
         'id' => $id
     ]);
 
+    // Guardar los valores nuevos
+    $valoresDespues = [
+        'nombre' => $usuarioAnterior['nombre'],
+        'correo' => $usuarioAnterior['correo'],
+        'rol_id' => $usuarioAnterior['rol_id'],
+        'activo' => 0
+    ];
+
+    // Registrar la acción en la bitácora
+    registrarBitacora(
+        $pdo,
+        'DESACTIVAR',
+        'usuarios',
+        $id,
+        $valoresAntes,
+        $valoresDespues
+    );
+
+    // Confirmar los cambios
+    $pdo->commit();
+
+    // Eliminar el token utilizado
+    unset($_SESSION['csrf_token']);
+
     // Redirigir al listado
     header('Location: listar.php?desactivado=1');
     exit;
 
-} catch (PDOException $e) {
+} catch (Throwable $e) {
+
+    // Deshacer los cambios si ocurrió un error
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
 
     error_log($e->getMessage());
+
+    if ($e instanceof RuntimeException) {
+        exit($e->getMessage());
+    }
 
     http_response_code(500);
     exit('No fue posible desactivar el usuario.');

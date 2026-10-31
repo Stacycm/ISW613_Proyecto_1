@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
 
 // Verificar que haya iniciado sesión
 requiereLogin();
@@ -56,6 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         try {
 
+            // Iniciar una transacción
+            $pdo->beginTransaction();
+
             // Insertar el usuario
             $sql = "INSERT INTO usuarios
                     (rol_id, nombre, correo, password_hash, activo)
@@ -71,6 +75,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'password_hash' => $password_hash
             ]);
 
+            // Obtener el ID del usuario recién creado
+            $usuarioId = (int) $pdo->lastInsertId();
+
+            // Registrar la acción en la bitácora
+            registrarBitacora(
+                $pdo,
+                'CREAR',
+                'usuarios',
+                $usuarioId,
+                null,
+                [
+                    'nombre' => $nombre,
+                    'correo' => $correo,
+                    'rol_id' => $rol_id
+                ]
+            );
+
+            // Confirmar ambas operaciones
+            $pdo->commit();
+
             // Eliminar el token utilizado
             unset($_SESSION['csrf_token']);
 
@@ -78,11 +102,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: listar.php?creado=1');
             exit;
 
-        } catch (PDOException $e) {
+        } catch (Throwable $e) {
+
+            // Deshacer los cambios si ocurrió un error
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
 
             error_log($e->getMessage());
 
-            if ($e->getCode() === '23000') {
+            if ($e instanceof PDOException && $e->getCode() === '23000') {
                 $error = 'Ese correo electrónico ya está registrado.';
             } else {
                 http_response_code(500);
@@ -189,4 +218,5 @@ if (empty($_SESSION['csrf_token'])) {
 </body>
 
 </html>
+
 

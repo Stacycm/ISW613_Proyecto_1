@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
+
 requiereLogin();
 
 // Verificar permiso
@@ -15,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit('Método no permitido.');
 }
 
-// Verificar CSRF
+// Validar CSRF
 if (
     !isset($_POST['csrf_token'], $_SESSION['csrf_token']) ||
     !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])
@@ -35,8 +37,10 @@ $equipo_id = filter_var(
     FILTER_VALIDATE_INT
 );
 
-if (!$prestamo_id || $prestamo_id < 1 ||
-    !$equipo_id || $equipo_id < 1) {
+if (
+    !$prestamo_id || $prestamo_id < 1 ||
+    !$equipo_id || $equipo_id < 1
+) {
     exit('Datos no válidos.');
 }
 
@@ -45,6 +49,7 @@ $pdo = require __DIR__ . '/../../app/config/config.php';
 
 try {
 
+    // Iniciar transacción
     $pdo->beginTransaction();
 
     // Buscar y bloquear el préstamo
@@ -59,11 +64,13 @@ try {
     $prestamo = $consulta->fetch();
 
     if (!$prestamo) {
-        throw new Exception('El préstamo no existe.');
+        throw new RuntimeException('El préstamo no existe.');
     }
 
     if ($prestamo['estado'] !== 'entregado') {
-        throw new Exception('El préstamo no está en estado entregado.');
+        throw new RuntimeException(
+            'El préstamo no está en estado entregado.'
+        );
     }
 
     // Verificar que el equipo pertenezca al préstamo
@@ -82,15 +89,17 @@ try {
     $detalle = $consulta->fetch();
 
     if (!$detalle) {
-        throw new Exception('El equipo no pertenece a este préstamo.');
+        throw new RuntimeException(
+            'El equipo no pertenece a este préstamo.'
+        );
     }
 
     if ($detalle['fecha_devolucion'] !== null) {
-        throw new Exception('Este equipo ya fue devuelto.');
+        throw new RuntimeException('Este equipo ya fue devuelto.');
     }
 
     // Bloquear el equipo
-    $sql = "SELECT id, estado
+    $sql = "SELECT id, codigo, nombre, estado
             FROM equipos
             WHERE id = :id
             AND eliminado_en IS NULL
@@ -102,8 +111,21 @@ try {
     $equipo = $consulta->fetch();
 
     if (!$equipo || $equipo['estado'] !== 'Prestado') {
-        throw new Exception('El equipo no se encuentra registrado como prestado.');
+        throw new RuntimeException(
+            'El equipo no se encuentra registrado como prestado.'
+        );
     }
+
+    // Guardar los valores anteriores
+    $valoresAntes = [
+        'prestamo_id' => (int) $prestamo_id,
+        'estado_prestamo' => $prestamo['estado'],
+        'equipo_id' => (int) $equipo_id,
+        'codigo_equipo' => $equipo['codigo'],
+        'nombre_equipo' => $equipo['nombre'],
+        'estado_equipo' => $equipo['estado'],
+        'fecha_devolucion' => null
+    ];
 
     // Registrar la fecha de devolución
     $sql = "UPDATE prestamo_detalle
@@ -119,8 +141,24 @@ try {
     ]);
 
     if ($consulta->rowCount() !== 1) {
-        throw new Exception('No se pudo registrar la devolución.');
+        throw new RuntimeException(
+            'No se pudo registrar la devolución.'
+        );
     }
+
+    // Obtener la fecha registrada
+    $sqlFecha = "SELECT fecha_devolucion
+                 FROM prestamo_detalle
+                 WHERE prestamo_id = :prestamo_id
+                 AND equipo_id = :equipo_id";
+
+    $consultaFecha = $pdo->prepare($sqlFecha);
+    $consultaFecha->execute([
+        'prestamo_id' => $prestamo_id,
+        'equipo_id' => $equipo_id
+    ]);
+
+    $fechaDevolucion = $consultaFecha->fetchColumn();
 
     // Cambiar el equipo a Disponible
     $sql = "UPDATE equipos
@@ -133,7 +171,9 @@ try {
     $consulta->execute(['id' => $equipo_id]);
 
     if ($consulta->rowCount() !== 1) {
-        throw new Exception('No se pudo actualizar el estado del equipo.');
+        throw new RuntimeException(
+            'No se pudo actualizar el estado del equipo.'
+        );
     }
 
     // Comprobar si quedan equipos pendientes de devolución
@@ -147,6 +187,9 @@ try {
 
     $pendientes = (int) $consulta->fetchColumn();
 
+    // Determinar el estado final del préstamo
+    $nuevoEstadoPrestamo = 'entregado';
+
     // Si todos fueron devueltos, cerrar el préstamo
     if ($pendientes === 0) {
 
@@ -159,10 +202,37 @@ try {
         $consulta->execute(['id' => $prestamo_id]);
 
         if ($consulta->rowCount() !== 1) {
-            throw new Exception('No se pudo cerrar el préstamo.');
+            throw new RuntimeException(
+                'No se pudo cerrar el préstamo.'
+            );
         }
+
+        $nuevoEstadoPrestamo = 'devuelto';
     }
 
+    // Guardar los valores nuevos
+    $valoresDespues = [
+        'prestamo_id' => (int) $prestamo_id,
+        'estado_prestamo' => $nuevoEstadoPrestamo,
+        'equipo_id' => (int) $equipo_id,
+        'codigo_equipo' => $equipo['codigo'],
+        'nombre_equipo' => $equipo['nombre'],
+        'estado_equipo' => 'Disponible',
+        'fecha_devolucion' => $fechaDevolucion,
+        'equipos_pendientes' => $pendientes
+    ];
+
+    // Registrar la devolución en la bitácora
+    registrarBitacora(
+        $pdo,
+        'DEVOLVER',
+        'prestamos',
+        (int) $prestamo_id,
+        $valoresAntes,
+        $valoresDespues
+    );
+
+    // Confirmar todas las operaciones
     $pdo->commit();
 
     unset($_SESSION['csrf_token']);
@@ -172,19 +242,24 @@ try {
 
 } catch (Throwable $e) {
 
+    // Deshacer cambios si ocurre un error
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
+    if ($e instanceof RuntimeException) {
+        http_response_code(400);
+        exit(
+            htmlspecialchars(
+                $e->getMessage(),
+                ENT_QUOTES | ENT_SUBSTITUTE,
+                'UTF-8'
+            )
+        );
+    }
+
     error_log($e->getMessage());
 
-    http_response_code(400);
-
-    exit(
-        htmlspecialchars(
-            $e->getMessage(),
-            ENT_QUOTES | ENT_SUBSTITUTE,
-            'UTF-8'
-        )
-    );
+    http_response_code(500);
+    exit('Ocurrió un error al registrar la devolución.');
 }

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
 
 requiereLogin();
 
@@ -66,10 +67,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $equipoIds = [];
     }
 
-    // Convertir IDs a enteros y eliminar duplicados
-    $equipoIds = array_map('intval', $equipoIds);
-    $equipoIds = array_unique($equipoIds);
-    $equipoIds = array_values($equipoIds);
+    // Validar que cada ID sea un entero positivo
+    $equipoIdsValidos = true;
+
+    foreach ($equipoIds as $equipoId) {
+        if (
+            !is_scalar($equipoId) ||
+            filter_var($equipoId, FILTER_VALIDATE_INT) === false ||
+            (int) $equipoId < 1
+        ) {
+            $equipoIdsValidos = false;
+            break;
+        }
+    }
+
+    if ($equipoIdsValidos) {
+        $equipoIds = array_map('intval', $equipoIds);
+        $equipoIds = array_unique($equipoIds);
+        $equipoIds = array_values($equipoIds);
+    } else {
+        $equipoIds = [];
+    }
 
     // Validar fechas
     $inicio = DateTime::createFromFormat('!Y-m-d', $fecha_inicio);
@@ -89,18 +107,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $mensaje = 'Las fechas seleccionadas no son válidas.';
 
-    } elseif (count($equipoIds) === 0) {
+    } elseif (!$equipoIdsValidos || count($equipoIds) === 0) {
 
-        $mensaje = 'Debes seleccionar al menos un equipo.';
-
-    } elseif (min($equipoIds) < 1) {
-
-        $mensaje = 'Hay un equipo seleccionado no válido.';
+        $mensaje = 'Debes seleccionar equipos válidos.';
 
     } else {
 
         try {
 
+            // Iniciar transacción
             $pdo->beginTransaction();
 
             // Comprobar que el usuario exista y esté activo
@@ -113,13 +128,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $consultaUsuario->execute(['id' => $usuario_id]);
 
             if (!$consultaUsuario->fetch()) {
-                throw new Exception('El usuario seleccionado no existe o está inactivo.');
+                throw new RuntimeException(
+                    'El usuario seleccionado no existe o está inactivo.'
+                );
             }
 
-            // Bloquear los equipos seleccionados
-            // para evitar modificaciones simultáneas.
+            // Ordenar los equipos para bloquearlos en el mismo orden
             sort($equipoIds);
 
+            // Bloquear los equipos seleccionados
             $marcadores = implode(
                 ',',
                 array_fill(0, count($equipoIds), '?')
@@ -138,14 +155,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $equiposSeleccionados = $consultaBloqueo->fetchAll();
 
             if (count($equiposSeleccionados) !== count($equipoIds)) {
-                throw new Exception('Uno o varios equipos no existen o fueron eliminados.');
+                throw new RuntimeException(
+                    'Uno o varios equipos no existen o fueron eliminados.'
+                );
             }
 
             // Comprobar que todos estén disponibles
             foreach ($equiposSeleccionados as $equipo) {
 
                 if ($equipo['estado'] !== 'Disponible') {
-                    throw new Exception(
+                    throw new RuntimeException(
                         'El equipo con ID ' . $equipo['id'] . ' no está disponible.'
                     );
                 }
@@ -176,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
 
                 if ((int) $consultaConflicto->fetchColumn() > 0) {
-                    throw new Exception(
+                    throw new RuntimeException(
                         'Uno de los equipos ya tiene un préstamo en esas fechas.'
                     );
                 }
@@ -185,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Registrar quién gestiona la solicitud.
             // Si es Administrador, operador_id queda NULL.
             $operador_id = (int) $_SESSION['rol_id'] === 2
-                ? $_SESSION['id']
+                ? (int) $_SESSION['id']
                 : null;
 
             // Crear el préstamo
@@ -216,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             // Obtener el ID del préstamo recién creado
-            $prestamo_id = $pdo->lastInsertId();
+            $prestamo_id = (int) $pdo->lastInsertId();
 
             // Registrar los equipos del préstamo
             $sqlDetalle = "INSERT INTO prestamo_detalle
@@ -233,6 +252,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
             }
 
+            // Guardar los valores nuevos para la bitácora
+            $valoresDespues = [
+                'usuario_id' => (int) $usuario_id,
+                'operador_id' => $operador_id,
+                'estado' => 'solicitado',
+                'fecha_inicio' => $fecha_inicio,
+                'fecha_fin' => $fecha_fin,
+                'equipos' => $equipoIds
+            ];
+
+            // Registrar la creación en la bitácora
+            registrarBitacora(
+                $pdo,
+                'CREAR',
+                'prestamos',
+                $prestamo_id,
+                null,
+                $valoresDespues
+            );
+
             // Confirmar todas las operaciones
             $pdo->commit();
 
@@ -247,9 +286,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->rollBack();
             }
 
-            $mensaje = $e instanceof PDOException
-                ? 'Ocurrió un error al registrar el préstamo. Revisa los datos e inténtalo nuevamente.'
-                : $e->getMessage();
+            if ($e instanceof PDOException) {
+                error_log($e->getMessage());
+                $mensaje = 'Ocurrió un error al registrar el préstamo. Revisa los datos e inténtalo nuevamente.';
+            } else {
+                $mensaje = $e->getMessage();
+            }
         }
     }
 }
@@ -345,7 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     value="<?= (int) $equipo['id'] ?>"
                     <?= in_array(
                         (int) $equipo['id'],
-                        array_map('intval', $_POST['equipos'] ?? []),
+                        array_map('intval', is_array($_POST['equipos'] ?? null) ? $_POST['equipos'] : []),
                         true
                     ) ? 'checked' : '' ?>
                 >

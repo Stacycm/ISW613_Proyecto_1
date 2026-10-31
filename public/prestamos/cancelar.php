@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
+
 requiereLogin();
 
 // Verificar permiso
@@ -36,10 +38,11 @@ $pdo = require __DIR__ . '/../../app/config/config.php';
 
 try {
 
+    // Iniciar transacción
     $pdo->beginTransaction();
 
     // Buscar y bloquear el préstamo
-    $sql = "SELECT id, estado
+    $sql = "SELECT id, estado, operador_id
             FROM prestamos
             WHERE id = :id
             FOR UPDATE";
@@ -50,13 +53,21 @@ try {
     $prestamo = $consulta->fetch();
 
     if (!$prestamo) {
-        throw new Exception('El préstamo no existe.');
+        throw new RuntimeException('El préstamo no existe.');
     }
 
     // Solo cancelar solicitudes o préstamos aprobados
     if (!in_array($prestamo['estado'], ['solicitado', 'aprobado'], true)) {
-        throw new Exception('Este préstamo no se puede cancelar.');
+        throw new RuntimeException('Este préstamo no se puede cancelar.');
     }
+
+    // Guardar los valores anteriores
+    $valoresAntes = [
+        'estado' => $prestamo['estado'],
+        'operador_id' => $prestamo['operador_id'] !== null
+            ? (int) $prestamo['operador_id']
+            : null
+    ];
 
     // Actualizar estado
     $sql = "UPDATE prestamos
@@ -68,11 +79,29 @@ try {
     $consulta->execute(['id' => $id]);
 
     if ($consulta->rowCount() !== 1) {
-        throw new Exception('No se pudo cancelar el préstamo.');
+        throw new RuntimeException('No se pudo cancelar el préstamo.');
     }
 
+    // Guardar los valores nuevos
+    $valoresDespues = [
+        'estado' => 'cancelado',
+        'operador_id' => $valoresAntes['operador_id']
+    ];
+
+    // Registrar la cancelación en la bitácora
+    registrarBitacora(
+        $pdo,
+        'CANCELAR',
+        'prestamos',
+        (int) $id,
+        $valoresAntes,
+        $valoresDespues
+    );
+
+    // Confirmar transacción
     $pdo->commit();
 
+    // Renovar token CSRF
     unset($_SESSION['csrf_token']);
 
     header('Location: listar.php?cancelado=1');
@@ -80,19 +109,24 @@ try {
 
 } catch (Throwable $e) {
 
+    // Deshacer cambios si ocurre un error
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
+    if ($e instanceof RuntimeException) {
+        http_response_code(400);
+        exit(
+            htmlspecialchars(
+                $e->getMessage(),
+                ENT_QUOTES | ENT_SUBSTITUTE,
+                'UTF-8'
+            )
+        );
+    }
+
     error_log($e->getMessage());
 
-    http_response_code(400);
-
-    exit(
-        htmlspecialchars(
-            $e->getMessage(),
-            ENT_QUOTES | ENT_SUBSTITUTE,
-            'UTF-8'
-        )
-    );
+    http_response_code(500);
+    exit('Ocurrió un error al cancelar el préstamo.');
 }

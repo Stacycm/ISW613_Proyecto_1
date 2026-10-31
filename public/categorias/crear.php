@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
 
 requiereLogin();
 
@@ -37,13 +38,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validaciones
     if ($nombre === '') {
         $error = 'El nombre de la categoría es obligatorio.';
+
     } elseif (strlen($nombre) > 100) {
         $error = 'El nombre no puede superar los 100 caracteres.';
+
     } elseif ($dias === false || $dias === null || $dias <= 0) {
         $error = 'Los días máximos de préstamo deben ser un número mayor que cero.';
+
     } else {
 
         try {
+
+            // Iniciar una transacción
+            $pdo->beginTransaction();
 
             // Insertar la categoría
             $sql = "INSERT INTO categoria
@@ -58,16 +65,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'dias' => $dias
             ]);
 
+            // Obtener el ID de la categoría creada
+            $categoriaId = (int) $pdo->lastInsertId();
+
+            // Registrar la acción en la bitácora
+            registrarBitacora(
+                $pdo,
+                'CREAR',
+                'categoria',
+                $categoriaId,
+                null,
+                [
+                    'nombre' => $nombre,
+                    'dias_max_prestamo' => $dias
+                ]
+            );
+
+            // Confirmar los cambios
+            $pdo->commit();
+
+            // Eliminar el token utilizado
             unset($_SESSION['csrf_token']);
 
+            // Redirigir al listado
             header('Location: listar.php?creado=1');
             exit;
 
-        } catch (PDOException $e) {
+        } catch (Throwable $e) {
+
+            // Deshacer los cambios si ocurre un error
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
 
             error_log($e->getMessage());
 
-            if ($e->getCode() === '23000') {
+            if ($e instanceof PDOException && $e->getCode() === '23000') {
                 $error = 'Ya existe una categoría con ese nombre.';
             } else {
                 http_response_code(500);
@@ -101,7 +134,7 @@ if (empty($_SESSION['csrf_token'])) {
     <br><br>
 
     <?php if ($error !== ''): ?>
-        <p><?= htmlspecialchars($error) ?></p>
+        <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
     <?php endif; ?>
 
     <form method="POST" action="crear.php">
@@ -109,7 +142,7 @@ if (empty($_SESSION['csrf_token'])) {
         <input
             type="hidden"
             name="csrf_token"
-            value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>"
+            value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>"
         >
 
         <label for="nombre">Nombre de la categoría:</label>
@@ -119,7 +152,7 @@ if (empty($_SESSION['csrf_token'])) {
             id="nombre"
             name="nombre"
             maxlength="100"
-            value="<?= htmlspecialchars($_POST['nombre'] ?? '') ?>"
+            value="<?= htmlspecialchars($_POST['nombre'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
             required
         >
 
@@ -134,7 +167,7 @@ if (empty($_SESSION['csrf_token'])) {
             id="dias_max_prestamo"
             name="dias_max_prestamo"
             min="1"
-            value="<?= htmlspecialchars($_POST['dias_max_prestamo'] ?? '') ?>"
+            value="<?= htmlspecialchars($_POST['dias_max_prestamo'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
             required
         >
 

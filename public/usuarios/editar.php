@@ -1,6 +1,8 @@
+
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
 
 requiereLogin();
 
@@ -52,6 +54,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
 
+        // Iniciar una transacción
+        $pdo->beginTransaction();
+
+        // Buscar los datos anteriores del usuario y bloquear el registro
+        $sql = "SELECT id, nombre, correo, rol_id
+                FROM usuarios
+                WHERE id = :id
+                FOR UPDATE";
+
+        $consulta = $pdo->prepare($sql);
+        $consulta->execute(['id' => $id]);
+
+        $usuarioAnterior = $consulta->fetch();
+
+        if (!$usuarioAnterior) {
+            throw new RuntimeException('El usuario no existe.');
+        }
+
+        // Guardar los valores anteriores
+        $valoresAntes = [
+            'nombre' => $usuarioAnterior['nombre'],
+            'correo' => $usuarioAnterior['correo'],
+            'rol_id' => $usuarioAnterior['rol_id']
+        ];
+
         // Actualizar el usuario
         $sql = "UPDATE usuarios
                 SET nombre = :nombre,
@@ -68,6 +95,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'id' => $id
         ]);
 
+        // Guardar los valores nuevos
+        $valoresDespues = [
+            'nombre' => $nombre,
+            'correo' => $correo,
+            'rol_id' => $rol_id
+        ];
+
+        // Registrar la modificación en la bitácora
+        registrarBitacora(
+            $pdo,
+            'EDITAR',
+            'usuarios',
+            $id,
+            $valoresAntes,
+            $valoresDespues
+        );
+
+        // Confirmar los cambios
+        $pdo->commit();
+
         // Eliminar el token utilizado
         unset($_SESSION['csrf_token']);
 
@@ -75,12 +122,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: listar.php?actualizado=1');
         exit;
 
-    } catch (PDOException $e) {
+    } catch (Throwable $e) {
+
+        // Deshacer los cambios si ocurre un error
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
 
         error_log($e->getMessage());
 
-        if ($e->getCode() === '23000') {
+        if ($e instanceof PDOException && $e->getCode() === '23000') {
             exit('Ese correo electrónico ya está registrado.');
+        }
+
+        if ($e instanceof RuntimeException) {
+            exit('El usuario no existe.');
         }
 
         http_response_code(500);

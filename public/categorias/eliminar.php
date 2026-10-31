@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
 
 requiereLogin();
 
@@ -36,6 +37,25 @@ try {
 
     $pdo = require __DIR__ . '/../../app/config/config.php';
 
+    // Iniciar una transacción
+    $pdo->beginTransaction();
+
+    // Buscar la categoría y bloquear el registro
+    $sql = "SELECT id, nombre, dias_max_prestamo, eliminado_en
+            FROM categoria
+            WHERE id = :id
+            AND eliminado_en IS NULL
+            FOR UPDATE";
+
+    $consulta = $pdo->prepare($sql);
+    $consulta->execute(['id' => $id]);
+
+    $categoriaAnterior = $consulta->fetch();
+
+    if (!$categoriaAnterior) {
+        throw new RuntimeException('La categoría no existe o ya fue eliminada.');
+    }
+
     // Comprobar si existen equipos asociados
     $sqlEquipos = "SELECT COUNT(*)
                    FROM equipos
@@ -48,8 +68,17 @@ try {
     $totalEquipos = (int) $consultaEquipos->fetchColumn();
 
     if ($totalEquipos > 0) {
-        exit('No puedes eliminar esta categoría porque tiene equipos asociados.');
+        throw new RuntimeException(
+            'No puedes eliminar esta categoría porque tiene equipos asociados.'
+        );
     }
+
+    // Guardar los valores anteriores
+    $valoresAntes = [
+        'nombre' => $categoriaAnterior['nombre'],
+        'dias_max_prestamo' => $categoriaAnterior['dias_max_prestamo'],
+        'eliminado_en' => null
+    ];
 
     // Eliminación lógica
     $sql = "UPDATE categoria
@@ -61,17 +90,48 @@ try {
     $consulta->execute(['id' => $id]);
 
     if ($consulta->rowCount() === 0) {
-        exit('La categoría no existe o ya fue eliminada.');
+        throw new RuntimeException('No fue posible eliminar la categoría.');
     }
 
+    // Guardar los valores nuevos
+    $valoresDespues = [
+        'nombre' => $categoriaAnterior['nombre'],
+        'dias_max_prestamo' => $categoriaAnterior['dias_max_prestamo'],
+        'eliminado_en' => date('Y-m-d H:i:s')
+    ];
+
+    // Registrar la acción en la bitácora
+    registrarBitacora(
+        $pdo,
+        'ELIMINAR',
+        'categoria',
+        $id,
+        $valoresAntes,
+        $valoresDespues
+    );
+
+    // Confirmar los cambios
+    $pdo->commit();
+
+    // Eliminar el token utilizado
     unset($_SESSION['csrf_token']);
 
+    // Redirigir al listado
     header('Location: listar.php?eliminado=1');
     exit;
 
-} catch (PDOException $e) {
+} catch (Throwable $e) {
+
+    // Deshacer los cambios si ocurre un error
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
 
     error_log($e->getMessage());
+
+    if ($e instanceof RuntimeException) {
+        exit($e->getMessage());
+    }
 
     http_response_code(500);
     exit('No fue posible eliminar la categoría.');

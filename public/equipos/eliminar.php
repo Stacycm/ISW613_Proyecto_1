@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
 
 requiereLogin();
 
@@ -35,11 +36,15 @@ $pdo = require __DIR__ . '/../../app/config/config.php';
 
 try {
 
-    // Comprobar que el equipo exista y esté activo
-    $sql = "SELECT id, estado
+    // Iniciar transacción
+    $pdo->beginTransaction();
+
+    // Comprobar que el equipo exista y bloquearlo
+    $sql = "SELECT id, codigo, nombre, categoria_id, estado, eliminado_en
             FROM equipos
             WHERE id = :id
-            AND eliminado_en IS NULL";
+            AND eliminado_en IS NULL
+            FOR UPDATE";
 
     $consulta = $pdo->prepare($sql);
     $consulta->execute(['id' => $id]);
@@ -47,7 +52,7 @@ try {
     $equipo = $consulta->fetch();
 
     if (!$equipo) {
-        exit('El equipo no existe o ya fue eliminado.');
+        throw new RuntimeException('El equipo no existe o ya fue eliminado.');
     }
 
     // Comprobar si el equipo tiene préstamos asociados
@@ -61,8 +66,19 @@ try {
     $tienePrestamos = (int) $consultaPrestamos->fetchColumn();
 
     if ($tienePrestamos > 0) {
-        exit('No se puede eliminar el equipo porque tiene préstamos asociados.');
+        throw new RuntimeException(
+            'No se puede eliminar el equipo porque tiene préstamos asociados.'
+        );
     }
+
+    // Guardar los valores anteriores
+    $valoresAntes = [
+        'codigo' => $equipo['codigo'],
+        'nombre' => $equipo['nombre'],
+        'categoria_id' => (int) $equipo['categoria_id'],
+        'estado' => $equipo['estado'],
+        'eliminado_en' => $equipo['eliminado_en']
+    ];
 
     // Eliminar lógicamente el equipo
     $sqlEliminar = "UPDATE equipos
@@ -75,15 +91,51 @@ try {
     $consultaEliminar->execute(['id' => $id]);
 
     if ($consultaEliminar->rowCount() === 0) {
-        exit('No se pudo eliminar el equipo.');
+        throw new RuntimeException('No se pudo eliminar el equipo.');
     }
+
+    // Guardar los valores posteriores
+    $consultaFecha = $pdo->query("SELECT eliminado_en FROM equipos WHERE id = " . (int) $id);
+
+    $fechaEliminacion = $consultaFecha->fetchColumn();
+
+    $valoresDespues = [
+        'codigo' => $equipo['codigo'],
+        'nombre' => $equipo['nombre'],
+        'categoria_id' => (int) $equipo['categoria_id'],
+        'estado' => $equipo['estado'],
+        'eliminado_en' => $fechaEliminacion
+    ];
+
+    // Registrar la eliminación en la bitácora
+    registrarBitacora(
+        $pdo,
+        'ELIMINAR',
+        'equipos',
+        (int) $id,
+        $valoresAntes,
+        $valoresDespues
+    );
+
+    // Confirmar la transacción
+    $pdo->commit();
 
     unset($_SESSION['csrf_token']);
 
     header('Location: listar.php?eliminado=1');
     exit;
 
-} catch (PDOException $e) {
+} catch (Throwable $e) {
+
+    // Deshacer los cambios si ocurre un error
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
+    if ($e instanceof RuntimeException) {
+        http_response_code(400);
+        exit($e->getMessage());
+    }
 
     error_log($e->getMessage());
 

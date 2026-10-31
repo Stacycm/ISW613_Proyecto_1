@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
 
 requiereLogin();
 
@@ -64,10 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $codigo = trim($_POST['codigo'] ?? '');
     $nombre = trim($_POST['nombre'] ?? '');
+
     $categoria_id = filter_var(
         $_POST['categoria_id'] ?? null,
         FILTER_VALIDATE_INT
     );
+
     $estado = $_POST['estado'] ?? '';
 
     $estadosPermitidos = [
@@ -78,10 +81,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($codigo === '' || $nombre === '') {
         $mensaje = 'El código y el nombre son obligatorios.';
+
     } elseif (!$categoria_id || $categoria_id < 1) {
         $mensaje = 'Selecciona una categoría válida.';
+
     } elseif (!in_array($estado, $estadosPermitidos, true)) {
         $mensaje = 'Selecciona un estado válido.';
+
     } else {
 
         // Verificar que la categoría esté activa
@@ -91,14 +97,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          AND eliminado_en IS NULL";
 
         $consultaCategoria = $pdo->prepare($sqlCategoria);
-        $consultaCategoria->execute(['id' => $categoria_id]);
+        $consultaCategoria->execute([
+            'id' => $categoria_id
+        ]);
 
         if ((int) $consultaCategoria->fetchColumn() === 0) {
             $mensaje = 'La categoría seleccionada no existe.';
+
         } else {
 
             try {
 
+                // Iniciar transacción
+                $pdo->beginTransaction();
+
+                // Consultar y bloquear el equipo
+                $sqlAnterior = "SELECT codigo, nombre, categoria_id, estado
+                                FROM equipos
+                                WHERE id = :id
+                                AND eliminado_en IS NULL
+                                FOR UPDATE";
+
+                $consultaAnterior = $pdo->prepare($sqlAnterior);
+                $consultaAnterior->execute([
+                    'id' => $id
+                ]);
+
+                $equipoAnterior = $consultaAnterior->fetch();
+
+                if (!$equipoAnterior) {
+                    throw new RuntimeException('El equipo ya no existe.');
+                }
+
+                // Guardar los valores anteriores
+                $valoresAntes = [
+                    'codigo' => $equipoAnterior['codigo'],
+                    'nombre' => $equipoAnterior['nombre'],
+                    'categoria_id' => (int) $equipoAnterior['categoria_id'],
+                    'estado' => $equipoAnterior['estado']
+                ];
+
+                // Actualizar el equipo
                 $sql = "UPDATE equipos
                         SET codigo = :codigo,
                             nombre = :nombre,
@@ -118,13 +157,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'id' => $id
                 ]);
 
+                // Guardar los valores nuevos
+                $valoresDespues = [
+                    'codigo' => $codigo,
+                    'nombre' => $nombre,
+                    'categoria_id' => (int) $categoria_id,
+                    'estado' => $estado
+                ];
+
+                // Registrar la modificación en la bitácora
+                registrarBitacora(
+                    $pdo,
+                    'EDITAR',
+                    'equipos',
+                    (int) $id,
+                    $valoresAntes,
+                    $valoresDespues
+                );
+
+                // Confirmar la transacción
+                $pdo->commit();
+
+                // Renovar token CSRF
+                unset($_SESSION['csrf_token']);
+
                 header('Location: listar.php?actualizado=1');
                 exit;
 
-            } catch (PDOException $e) {
+            } catch (Throwable $e) {
 
-                if ($e->getCode() === '23000') {
+                // Deshacer los cambios si ocurre un error
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+
+                if (
+                    $e instanceof PDOException &&
+                    $e->getCode() === '23000'
+                ) {
                     $mensaje = 'Ese código ya está registrado.';
+
+                } elseif ($e instanceof RuntimeException) {
+                    $mensaje = $e->getMessage();
+
                 } else {
                     throw $e;
                 }

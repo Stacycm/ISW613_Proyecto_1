@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
 
 requiereLogin();
 
@@ -39,10 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $codigo = trim($_POST['codigo'] ?? '');
     $nombre = trim($_POST['nombre'] ?? '');
+
     $categoria_id = filter_var(
         $_POST['categoria_id'] ?? null,
         FILTER_VALIDATE_INT
     );
+
     $estado = $_POST['estado'] ?? '';
 
     $estadosPermitidos = [
@@ -53,10 +56,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($codigo === '' || $nombre === '') {
         $mensaje = 'Todos los campos son obligatorios.';
+
     } elseif (!$categoria_id || $categoria_id < 1) {
         $mensaje = 'Selecciona una categoría válida.';
+
     } elseif (!in_array($estado, $estadosPermitidos, true)) {
         $mensaje = 'Selecciona un estado válido.';
+
     } else {
 
         // Verificar que la categoría exista y esté activa
@@ -66,13 +72,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          AND eliminado_en IS NULL";
 
         $consultaCategoria = $pdo->prepare($sqlCategoria);
-        $consultaCategoria->execute(['id' => $categoria_id]);
+        $consultaCategoria->execute([
+            'id' => $categoria_id
+        ]);
 
         if ((int) $consultaCategoria->fetchColumn() === 0) {
             $mensaje = 'La categoría seleccionada no existe.';
+
         } else {
 
             try {
+
+                // Iniciar transacción
+                $pdo->beginTransaction();
+
+                // Insertar el equipo
                 $sql = "INSERT INTO equipos
                         (categoria_id, codigo, nombre, estado, version)
                         VALUES
@@ -87,11 +101,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'estado' => $estado
                 ]);
 
+                // Obtener el ID del equipo creado
+                $equipoId = (int) $pdo->lastInsertId();
+
+                // Registrar la acción en la bitácora
+                registrarBitacora(
+                    $pdo,
+                    'CREAR',
+                    'equipos',
+                    $equipoId,
+                    null,
+                    [
+                        'codigo' => $codigo,
+                        'nombre' => $nombre,
+                        'categoria_id' => $categoria_id,
+                        'estado' => $estado
+                    ]
+                );
+
+                // Confirmar la transacción
+                $pdo->commit();
+
+                // Renovar token CSRF
+                unset($_SESSION['csrf_token']);
+
                 header('Location: listar.php?creado=1');
                 exit;
 
-            } catch (PDOException $e) {
-                if ($e->getCode() === '23000') {
+            } catch (Throwable $e) {
+
+                // Si ocurre un error, deshacer los cambios
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+
+                if (
+                    $e instanceof PDOException &&
+                    $e->getCode() === '23000'
+                ) {
                     $mensaje = 'Ese código de equipo ya está registrado.';
                 } else {
                     throw $e;

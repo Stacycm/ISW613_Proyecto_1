@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+require_once __DIR__ . '/../../app/includes/bitacora.php';
+
 requiereLogin();
 
 // Verificar permiso
@@ -36,6 +38,7 @@ $pdo = require __DIR__ . '/../../app/config/config.php';
 
 try {
 
+    // Iniciar transacción
     $pdo->beginTransaction();
 
     // Buscar y bloquear el préstamo
@@ -50,12 +53,14 @@ try {
     $prestamo = $consulta->fetch();
 
     if (!$prestamo) {
-        throw new Exception('El préstamo no existe.');
+        throw new RuntimeException('El préstamo no existe.');
     }
 
     // Verificar que esté aprobado
     if ($prestamo['estado'] !== 'aprobado') {
-        throw new Exception('Solo se pueden entregar préstamos aprobados.');
+        throw new RuntimeException(
+            'Solo se pueden entregar préstamos aprobados.'
+        );
     }
 
     // Obtener los equipos del préstamo
@@ -70,13 +75,15 @@ try {
     $equipos = $consulta->fetchAll(PDO::FETCH_COLUMN);
 
     if (empty($equipos)) {
-        throw new Exception('El préstamo no tiene equipos registrados.');
+        throw new RuntimeException(
+            'El préstamo no tiene equipos registrados.'
+        );
     }
 
     // Bloquear los equipos
     $marcadores = implode(',', array_fill(0, count($equipos), '?'));
 
-    $sql = "SELECT id, estado
+    $sql = "SELECT id, codigo, nombre, estado
             FROM equipos
             WHERE id IN ($marcadores)
             AND eliminado_en IS NULL
@@ -89,15 +96,31 @@ try {
     $equiposBloqueados = $consulta->fetchAll();
 
     if (count($equiposBloqueados) !== count($equipos)) {
-        throw new Exception('Uno o más equipos no están disponibles.');
+        throw new RuntimeException(
+            'Uno o más equipos no están disponibles.'
+        );
     }
 
     // Comprobar que todos estén disponibles
     foreach ($equiposBloqueados as $equipo) {
 
         if ($equipo['estado'] !== 'Disponible') {
-            throw new Exception('Uno o más equipos ya no están disponibles.');
+            throw new RuntimeException(
+                'Uno o más equipos ya no están disponibles.'
+            );
         }
+    }
+
+    // Guardar información anterior de los equipos
+    $equiposAntes = [];
+
+    foreach ($equiposBloqueados as $equipo) {
+        $equiposAntes[] = [
+            'equipo_id' => (int) $equipo['id'],
+            'codigo' => $equipo['codigo'],
+            'nombre' => $equipo['nombre'],
+            'estado' => $equipo['estado']
+        ];
     }
 
     // Cambiar los equipos a Prestado
@@ -111,7 +134,9 @@ try {
     $consulta->execute($equipos);
 
     if ($consulta->rowCount() !== count($equipos)) {
-        throw new Exception('No se pudieron actualizar todos los equipos.');
+        throw new RuntimeException(
+            'No se pudieron actualizar todos los equipos.'
+        );
     }
 
     // Cambiar el estado del préstamo
@@ -124,9 +149,40 @@ try {
     $consulta->execute(['id' => $id]);
 
     if ($consulta->rowCount() !== 1) {
-        throw new Exception('No se pudo actualizar el préstamo.');
+        throw new RuntimeException(
+            'No se pudo actualizar el préstamo.'
+        );
     }
 
+    // Preparar información nueva de los equipos
+    $equiposDespues = [];
+
+    foreach ($equiposBloqueados as $equipo) {
+        $equiposDespues[] = [
+            'equipo_id' => (int) $equipo['id'],
+            'codigo' => $equipo['codigo'],
+            'nombre' => $equipo['nombre'],
+            'estado' => 'Prestado'
+        ];
+    }
+
+    // Registrar la entrega en la bitácora
+    registrarBitacora(
+        $pdo,
+        'ENTREGAR',
+        'prestamos',
+        (int) $id,
+        [
+            'estado_prestamo' => 'aprobado',
+            'equipos' => $equiposAntes
+        ],
+        [
+            'estado_prestamo' => 'entregado',
+            'equipos' => $equiposDespues
+        ]
+    );
+
+    // Confirmar todas las operaciones
     $pdo->commit();
 
     unset($_SESSION['csrf_token']);
@@ -136,6 +192,7 @@ try {
 
 } catch (Throwable $e) {
 
+    // Deshacer cambios si ocurre un error
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
