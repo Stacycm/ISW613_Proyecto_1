@@ -105,4 +105,3 @@ foreach ($resultados as $equipo) {
 
 fclose($salida);
 exit;
-
