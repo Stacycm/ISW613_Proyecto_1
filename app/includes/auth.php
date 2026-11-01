@@ -1,110 +1,167 @@
 <?php
 
-// Iniciar la sesión si todavía no está iniciada
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Recuperar la sesión mediante la cookie "Recordarme"
-if (
-    !isset($_SESSION['id']) &&
-    isset($_COOKIE['recordarme'])
-) {
+// ==========================================
+// RESTAURAR SESIÓN CON "RECORDARME"
+// ==========================================
 
-    try {
+if (!isset($_SESSION['id']) && isset($_COOKIE['recordarme'])) {
 
-        $cookie = $_COOKIE['recordarme'];
+    $partes = explode(':', $_COOKIE['recordarme']);
 
-        // Separar selector y validador
-        $partes = explode(':', $cookie, 2);
+    if (count($partes) === 2) {
 
-        if (count($partes) === 2) {
+        [$selector, $validador] = $partes;
 
-            $selector = $partes[0];
-            $validador = $partes[1];
-
-            // Comprobar el formato de los valores
-            if (
-                preg_match('/^[a-f0-9]{24}$/', $selector) &&
-                preg_match('/^[a-f0-9]{64}$/', $validador)
-            ) {
+        if (
+            preg_match('/^[a-f0-9]{24}$/', $selector) &&
+            preg_match('/^[a-f0-9]{64}$/', $validador)
+        ) {
+            try {
 
                 $pdo = require __DIR__ . '/../config/config.php';
 
-                // Buscar el token y su usuario
                 $sql = "SELECT
-                            at.id AS token_id,
-                            at.usuario_id,
-                            at.validador_hash,
+                            t.id AS token_id,
+                            t.usuario_id,
+                            t.validador_hash,
                             u.nombre,
                             u.rol_id
-                        FROM auth_tokens at
-                        INNER JOIN usuarios u
-                            ON u.id = at.usuario_id
-                        WHERE at.selector = :selector
-                        AND at.expira_en > NOW()
-                        AND u.activo = 1
-                        LIMIT 1";
+                        FROM auth_tokens t
+                        INNER JOIN usuarios u ON u.id = t.usuario_id
+                        WHERE t.selector = :selector
+                        AND t.expira_en > NOW()
+                        AND u.activo = 1";
 
                 $consulta = $pdo->prepare($sql);
-
                 $consulta->execute([
                     'selector' => $selector
                 ]);
 
                 $token = $consulta->fetch();
 
-                // Verificar el validador
                 if (
                     $token &&
-                    password_verify(
-                        $validador,
-                        $token['validador_hash']
-                    )
+                    password_verify($validador, $token['validador_hash'])
                 ) {
 
-                    // Regenerar el identificador de sesión
-                    session_regenerate_id(true);
+                    // Generar un nuevo token.
+                    $nuevoSelector = bin2hex(random_bytes(12));
+                    $nuevoValidador = bin2hex(random_bytes(32));
 
-                    // Recuperar los datos del usuario
-                    $_SESSION['id'] = (int) $token['usuario_id'];
-                    $_SESSION['nombre'] = $token['nombre'];
-                    $_SESSION['rol_id'] = (int) $token['rol_id'];
+                    $nuevoHash = password_hash(
+                        $nuevoValidador,
+                        PASSWORD_DEFAULT
+                    );
+
+                    $expiracion = time() + (30 * 24 * 60 * 60);
+
+                    $fechaExpiracion = date(
+                        'Y-m-d H:i:s',
+                        $expiracion
+                    );
+
+                    try {
+
+                        // Iniciar transacción.
+                        $pdo->beginTransaction();
+
+                        // Guardar el nuevo token.
+                        $insertar = $pdo->prepare(
+                            "INSERT INTO auth_tokens
+                            (usuario_id, selector, validador_hash, expira_en)
+                            VALUES
+                            (:usuario_id, :selector, :hash, :expira)"
+                        );
+
+                        $insertar->execute([
+                            'usuario_id' => $token['usuario_id'],
+                            'selector' => $nuevoSelector,
+                            'hash' => $nuevoHash,
+                            'expira' => $fechaExpiracion
+                        ]);
+
+                        // Eliminar el token anterior.
+                        $eliminar = $pdo->prepare(
+                            "DELETE FROM auth_tokens WHERE id = :id"
+                        );
+
+                        $eliminar->execute([
+                            'id' => $token['token_id']
+                        ]);
+
+                        // Confirmar los cambios.
+                        $pdo->commit();
+
+                        // Crear la sesión.
+                        session_regenerate_id(true);
+
+                        $_SESSION['id'] = $token['usuario_id'];
+                        $_SESSION['nombre'] = $token['nombre'];
+                        $_SESSION['rol_id'] = $token['rol_id'];
+
+                        // Actualizar la cookie.
+                        setcookie(
+                            'recordarme',
+                            $nuevoSelector . ':' . $nuevoValidador,
+                            [
+                                'expires' => $expiracion,
+                                'path' => '/',
+                                'secure' => !empty($_SERVER['HTTPS']) &&
+                                            $_SERVER['HTTPS'] !== 'off',
+                                'httponly' => true,
+                                'samesite' => 'Lax'
+                            ]
+                        );
+
+                    } catch (PDOException $e) {
+
+                        if ($pdo->inTransaction()) {
+                            $pdo->rollBack();
+                        }
+
+                        error_log(
+                            'Error al renovar el token: ' . $e->getMessage()
+                        );
+                    }
 
                 } else {
 
-                    // Eliminar el token inválido o vencido
-                    $sqlEliminar = "DELETE FROM auth_tokens
-                                    WHERE selector = :selector";
+                    // Eliminar token inválido o expirado.
+                    $eliminar = $pdo->prepare(
+                        "DELETE FROM auth_tokens WHERE selector = :selector"
+                    );
 
-                    $consultaEliminar = $pdo->prepare($sqlEliminar);
-
-                    $consultaEliminar->execute([
+                    $eliminar->execute([
                         'selector' => $selector
                     ]);
 
-                    // Eliminar la cookie
+                    // Eliminar cookie.
                     setcookie('recordarme', '', [
                         'expires' => time() - 3600,
                         'path' => '/',
-                        'secure' => !empty($_SERVER['HTTPS']) &&
-                                    $_SERVER['HTTPS'] !== 'off',
                         'httponly' => true,
                         'samesite' => 'Lax'
                     ]);
-
                 }
+
+            } catch (PDOException $e) {
+
+                error_log(
+                    'Error al restaurar sesión: ' . $e->getMessage()
+                );
             }
         }
-
-    } catch (PDOException $e) {
-
-        error_log($e->getMessage());
-
     }
 }
 
-// Comprobar que el usuario haya iniciado sesión
+// ==========================================
+// FUNCIÓN PARA REQUERIR INICIO DE SESIÓN
+// ==========================================
+
 function requiereLogin(): void
 {
     if (!isset($_SESSION['id'])) {
@@ -113,7 +170,10 @@ function requiereLogin(): void
     }
 }
 
-// Comprobar los permisos del usuario
+// ==========================================
+// FUNCIÓN PARA COMPROBAR PERMISOS
+// ==========================================
+
 function tienePermiso(string $permiso): bool
 {
     requiereLogin();
