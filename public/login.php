@@ -57,6 +57,18 @@ if (empty($_SESSION['csrf_token'])) {
 
         <br><br>
 
+        <label for="recordarme">
+            <input
+                type="checkbox"
+                id="recordarme"
+                name="recordarme"
+                value="1"
+            >
+            Recordarme
+        </label>
+
+        <br><br>
+
         <button type="submit">Ingresar</button>
 
     </form>
