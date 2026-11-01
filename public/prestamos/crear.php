@@ -1,3 +1,4 @@
+
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
@@ -136,17 +137,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Ordenar los equipos para bloquearlos en el mismo orden
             sort($equipoIds);
 
-            // Bloquear los equipos seleccionados
+            // Crear marcadores para la consulta
             $marcadores = implode(
                 ',',
                 array_fill(0, count($equipoIds), '?')
             );
 
-            $sqlBloqueo = "SELECT id, estado
-                           FROM equipos
-                           WHERE id IN ($marcadores)
-                           AND eliminado_en IS NULL
-                           ORDER BY id
+            // Bloquear los equipos y consultar sus días máximos
+            $sqlBloqueo = "SELECT
+                               e.id,
+                               e.estado,
+                               c.dias_max_prestamo
+                           FROM equipos e
+                           INNER JOIN categoria c ON c.id = e.categoria_id
+                           WHERE e.id IN ($marcadores)
+                           AND e.eliminado_en IS NULL
+                           ORDER BY e.id
                            FOR UPDATE";
 
             $consultaBloqueo = $pdo->prepare($sqlBloqueo);
@@ -160,12 +166,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
             }
 
-            // Comprobar que todos estén disponibles
+            // Calcular los días solicitados
+            $diasSolicitados = (int) $inicio->diff($fin)->days;
+
+            // Comprobar disponibilidad y duración máxima
             foreach ($equiposSeleccionados as $equipo) {
 
                 if ($equipo['estado'] !== 'Disponible') {
                     throw new RuntimeException(
-                        'El equipo con ID ' . $equipo['id'] . ' no está disponible.'
+                        'El equipo con ID ' . $equipo['id'] .
+                        ' no está disponible.'
+                    );
+                }
+
+                $diasMaximos = (int) $equipo['dias_max_prestamo'];
+
+                if ($diasMaximos < 1) {
+                    throw new RuntimeException(
+                        'La categoría del equipo con ID ' . $equipo['id'] .
+                        ' no tiene configurado un máximo de días válido.'
+                    );
+                }
+
+                if ($diasSolicitados > $diasMaximos) {
+                    throw new RuntimeException(
+                        'El equipo con ID ' . $equipo['id'] .
+                        ' permite un máximo de ' . $diasMaximos .
+                        ' días de préstamo. Estás solicitando ' .
+                        $diasSolicitados . ' días.'
                     );
                 }
             }
@@ -259,6 +287,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'estado' => 'solicitado',
                 'fecha_inicio' => $fecha_inicio,
                 'fecha_fin' => $fecha_fin,
+                'dias_solicitados' => $diasSolicitados,
                 'equipos' => $equipoIds
             ];
 
@@ -354,7 +383,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <input
         type="date"
         name="fecha_inicio"
-        value="<?= htmlspecialchars($_POST['fecha_inicio'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+        value="<?= htmlspecialchars(
+            $_POST['fecha_inicio'] ?? '',
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8'
+        ) ?>"
         required
     >
 
@@ -365,7 +398,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <input
         type="date"
         name="fecha_fin"
-        value="<?= htmlspecialchars($_POST['fecha_fin'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+        value="<?= htmlspecialchars(
+            $_POST['fecha_fin'] ?? '',
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8'
+        ) ?>"
         required
     >
 
@@ -387,7 +424,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     value="<?= (int) $equipo['id'] ?>"
                     <?= in_array(
                         (int) $equipo['id'],
-                        array_map('intval', is_array($_POST['equipos'] ?? null) ? $_POST['equipos'] : []),
+                        array_map(
+                            'intval',
+                            is_array($_POST['equipos'] ?? null)
+                                ? $_POST['equipos']
+                                : []
+                        ),
                         true
                     ) ? 'checked' : '' ?>
                 >
