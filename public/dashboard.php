@@ -67,6 +67,10 @@ if ($rol_id === 1) {
                 <li><a href="/reportes/listar.php">Reportes</a></li>
             <?php endif; ?>
 
+            <?php if (tienePermiso('prestamo_consultar')): ?>
+                <li><a href="/prestamos/listar.php">Préstamos</a></li>
+            <?php endif; ?>    
+
             <?php if (tienePermiso('bitacora_consultar')): ?>
                 <li><a href="/bitacora/listar.php">Bitácora</a></li>
             <?php endif; ?>
