@@ -4,9 +4,16 @@ require_once __DIR__ . '/../app/includes/auth.php';
 
 requiereLogin();
 
+// Obtener datos de sesión.
 $nombre = $_SESSION['nombre'];
 $rol_id = (int) $_SESSION['rol_id'];
 
+// Crear token CSRF para cerrar sesión.
+if (empty($_SESSION['csrf_token_logout'])) {
+    $_SESSION['csrf_token_logout'] = bin2hex(random_bytes(32));
+}
+
+// Identificar rol.
 if ($rol_id === 1) {
     $rol = 'Administrador';
 } elseif ($rol_id === 2) {
@@ -35,12 +42,24 @@ if ($rol_id === 1) {
 
     <p>
         Bienvenido,
-        <strong><?= htmlspecialchars($nombre, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+        <strong>
+            <?= htmlspecialchars(
+                $nombre,
+                ENT_QUOTES | ENT_SUBSTITUTE,
+                'UTF-8'
+            ) ?>
+        </strong>
     </p>
 
     <p>
         Rol:
-        <strong><?= htmlspecialchars($rol, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></strong>
+        <strong>
+            <?= htmlspecialchars(
+                $rol,
+                ENT_QUOTES | ENT_SUBSTITUTE,
+                'UTF-8'
+            ) ?>
+        </strong>
     </p>
 
     <hr>
@@ -69,7 +88,7 @@ if ($rol_id === 1) {
 
             <?php if (tienePermiso('prestamo_consultar')): ?>
                 <li><a href="/prestamos/listar.php">Préstamos</a></li>
-            <?php endif; ?>    
+            <?php endif; ?>
 
             <?php if (tienePermiso('bitacora_consultar')): ?>
                 <li><a href="/bitacora/listar.php">Bitácora</a></li>
@@ -97,10 +116,22 @@ if ($rol_id === 1) {
 
     <hr>
 
-    <p>
-        <a href="logout.php">Cerrar sesión</a>
-    </p>
+    <form action="/logout.php" method="POST">
+
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="<?= htmlspecialchars(
+                $_SESSION['csrf_token_logout'],
+                ENT_QUOTES | ENT_SUBSTITUTE,
+                'UTF-8'
+            ) ?>"
+        >
+
+        <button type="submit">Cerrar sesión</button>
+
+    </form>
 
 </body>
-
 </html>
+
