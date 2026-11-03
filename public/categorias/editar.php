@@ -180,67 +180,101 @@ if (empty($_SESSION['csrf_token'])) {
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editar categoría - SIGEL</title>
+    <link rel="stylesheet" href="/css/estilos.css">
 </head>
 
 <body>
 
-    <h1>Editar categoría</h1>
+    <main class="contenedor contenedor-modulo">
 
-    <a href="listar.php">Volver al listado</a>
+        <header class="titulo-modulo">
+            <div>
+                <h1>Editar categoría</h1>
+                <p>Modifica la información de la categoría seleccionada.</p>
+            </div>
 
-    <br><br>
+            <a href="listar.php" class="boton boton-secundario">
+                Volver a categorías
+            </a>
+        </header>
 
-    <?php if ($error !== ''): ?>
-        <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
-    <?php endif; ?>
+        <section class="panel-modulo formulario-panel">
 
-    <form method="POST" action="editar.php">
+            <div class="panel-titulo">
+                <h2>Información de la categoría</h2>
+            </div>
 
-        <input
-            type="hidden"
-            name="id"
-            value="<?= $id ?>"
-        >
+            <?php if ($error !== ''): ?>
+                <div class="mensaje mensaje-error">
+                    <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
+                </div>
+            <?php endif; ?>
 
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>"
-        >
+            <form method="POST" action="editar.php" class="formulario-modulo">
 
-        <label for="nombre">Nombre de la categoría:</label>
+                <input
+                    type="hidden"
+                    name="id"
+                    value="<?= $id ?>"
+                >
 
-        <input
-            type="text"
-            id="nombre"
-            name="nombre"
-            maxlength="100"
-            value="<?= htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') ?>"
-            required
-        >
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>"
+                >
 
-        <br><br>
+                <div class="campo-formulario">
+                    <label for="nombre">Nombre de la categoría:</label>
 
-        <label for="dias_max_prestamo">
-            Días máximos de préstamo:
-        </label>
+                    <input
+                        type="text"
+                        id="nombre"
+                        name="nombre"
+                        maxlength="100"
+                        value="<?= htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8') ?>"
+                        required
+                    >
+                </div>
 
-        <input
-            type="number"
-            id="dias_max_prestamo"
-            name="dias_max_prestamo"
-            min="1"
-            value="<?= htmlspecialchars((string) $dias, ENT_QUOTES, 'UTF-8') ?>"
-            required
-        >
+                <div class="campo-formulario">
+                    <label for="dias_max_prestamo">
+                        Días máximos de préstamo:
+                    </label>
 
-        <br><br>
+                    <input
+                        type="number"
+                        id="dias_max_prestamo"
+                        name="dias_max_prestamo"
+                        min="1"
+                        value="<?= htmlspecialchars((string) $dias, ENT_QUOTES, 'UTF-8') ?>"
+                        required
+                    >
 
-        <button type="submit">Guardar cambios</button>
+                    <small>
+                        Indica la cantidad máxima de días permitidos para los préstamos de esta categoría.
+                    </small>
+                </div>
 
-    </form>
+                <div class="acciones-formulario">
+
+                    <a href="listar.php" class="boton boton-secundario">
+                        Cancelar
+                    </a>
+
+                    <button type="submit" class="boton boton-principal">
+                        Guardar cambios
+                    </button>
+
+                </div>
+
+            </form>
+
+        </section>
+
+    </main>
 
 </body>
 </html>
-

@@ -33,6 +33,9 @@ if ($id <= 0) {
     exit('Categoría no válida.');
 }
 
+// Inicializar PDO para manejar posibles errores de conexión
+$pdo = null;
+
 try {
 
     $pdo = require __DIR__ . '/../../app/config/config.php';
@@ -53,7 +56,9 @@ try {
     $categoriaAnterior = $consulta->fetch();
 
     if (!$categoriaAnterior) {
-        throw new RuntimeException('La categoría no existe o ya fue eliminada.');
+        throw new RuntimeException(
+            'La categoría no existe o ya fue eliminada.'
+        );
     }
 
     // Comprobar si existen equipos asociados
@@ -90,7 +95,9 @@ try {
     $consulta->execute(['id' => $id]);
 
     if ($consulta->rowCount() === 0) {
-        throw new RuntimeException('No fue posible eliminar la categoría.');
+        throw new RuntimeException(
+            'No fue posible eliminar la categoría.'
+        );
     }
 
     // Guardar los valores nuevos
@@ -122,14 +129,15 @@ try {
 
 } catch (Throwable $e) {
 
-    // Deshacer los cambios si ocurre un error
-    if ($pdo->inTransaction()) {
+    // Deshacer los cambios si existe una transacción activa
+    if ($pdo instanceof PDO && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
     error_log($e->getMessage());
 
     if ($e instanceof RuntimeException) {
+        http_response_code(400);
         exit($e->getMessage());
     }
 

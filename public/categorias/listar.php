@@ -92,169 +92,214 @@ $categorias = $consulta->fetchAll();
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de categorías - SIGEL</title>
+    <link rel="stylesheet" href="/css/estilos.css">
 </head>
 
 <body>
 
-    <h1>Gestión de categorías</h1>
+    <main class="contenedor contenedor-modulo">
 
-    <a href="../dashboard.php">Volver al inicio</a>
+        <header class="titulo-modulo">
+            <div>
+                <h1>Gestión de categorías</h1>
+                <p>Consulta y administra las categorías de los equipos.</p>
+            </div>
 
-    <hr>
+            <a href="../dashboard.php" class="boton boton-secundario">
+                Volver al inicio
+            </a>
+        </header>
 
-    <?php if (isset($_GET['creado'])): ?>
-        <p>Categoría registrada correctamente.</p>
-    <?php endif; ?>
+        <?php if (isset($_GET['creado'])): ?>
+            <div class="mensaje mensaje-exito">
+                Categoría registrada correctamente.
+            </div>
+        <?php endif; ?>
 
-    <?php if (isset($_GET['actualizado'])): ?>
-        <p>Categoría actualizada correctamente.</p>
-    <?php endif; ?>
+        <?php if (isset($_GET['actualizado'])): ?>
+            <div class="mensaje mensaje-exito">
+                Categoría actualizada correctamente.
+            </div>
+        <?php endif; ?>
 
-    <?php if (isset($_GET['eliminado'])): ?>
-        <p>Categoría eliminada correctamente.</p>
-    <?php endif; ?>
+        <?php if (isset($_GET['eliminado'])): ?>
+            <div class="mensaje mensaje-exito">
+                Categoría eliminada correctamente.
+            </div>
+        <?php endif; ?>
 
-    <h2>Categorías registradas</h2>
+        <section class="panel-modulo">
 
-    <?php if ($puedeCrear): ?>
-        <a href="crear.php">Registrar nueva categoría</a>
-    <?php endif; ?>
+            <div class="panel-titulo">
+                <h2>Categorías registradas</h2>
 
-    <br><br>
+                <?php if ($puedeCrear): ?>
+                    <a href="crear.php" class="boton boton-principal">
+                        + Registrar categoría
+                    </a>
+                <?php endif; ?>
+            </div>
 
-    <!-- Formulario de búsqueda -->
-    <form method="GET" action="listar.php">
+            <form method="GET" action="listar.php" class="formulario-busqueda">
 
-        <input
-            type="text"
-            name="buscar"
-            placeholder="Buscar categoría"
-            value="<?= htmlspecialchars($buscar) ?>"
-        >
+                <input
+                    type="text"
+                    name="buscar"
+                    placeholder="Buscar categoría..."
+                    value="<?= htmlspecialchars($buscar, ENT_QUOTES, 'UTF-8') ?>"
+                >
 
-        <button type="submit">Buscar</button>
+                <button type="submit" class="boton boton-principal">
+                    Buscar
+                </button>
 
-        <a href="listar.php">Limpiar búsqueda</a>
+                <a href="listar.php" class="boton boton-secundario">
+                    Limpiar
+                </a>
 
-    </form>
+            </form>
 
-    <br>
+            <div class="tabla-contenedor">
 
-    <!-- Tabla de categorías -->
-    <table border="1" cellpadding="8">
+                <table class="tabla-estilizada">
 
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Días máximos de préstamo</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Días máximos de préstamo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
 
-        <tbody>
+                    <tbody>
 
-            <?php if (count($categorias) > 0): ?>
+                        <?php if (count($categorias) > 0): ?>
 
-                <?php foreach ($categorias as $categoria): ?>
+                            <?php foreach ($categorias as $categoria): ?>
 
-                    <tr>
+                                <tr>
 
-                        <td>
-                            <?= htmlspecialchars((string) $categoria['id']) ?>
-                        </td>
+                                    <td>
+                                        <?= htmlspecialchars((string) $categoria['id']) ?>
+                                    </td>
 
-                        <td>
-                            <?= htmlspecialchars($categoria['nombre']) ?>
-                        </td>
+                                    <td>
+                                        <?= htmlspecialchars($categoria['nombre'], ENT_QUOTES, 'UTF-8') ?>
+                                    </td>
 
-                        <td>
-                            <?= htmlspecialchars((string) $categoria['dias_max_prestamo']) ?>
-                        </td>
+                                    <td>
+                                        <?= htmlspecialchars((string) $categoria['dias_max_prestamo']) ?>
+                                    </td>
 
-                        <td>
+                                    <td>
+                                        <div class="acciones-tabla">
 
-                            <!-- Editar categoría -->
-                            <?php if ($puedeEditar): ?>
+                                            <?php if ($puedeEditar): ?>
 
-                                <a href="editar.php?id=<?= (int) $categoria['id'] ?>">
-                                    Editar
-                                </a>
+                                                <a
+                                                    href="editar.php?id=<?= (int) $categoria['id'] ?>"
+                                                    class="boton boton-pequeno boton-editar"
+                                                >
+                                                    Editar
+                                                </a>
 
-                            <?php endif; ?>
+                                            <?php endif; ?>
 
+                                            <?php if ($puedeEliminar): ?>
 
-                            <!-- Eliminar categoría -->
-                            <?php if ($puedeEliminar): ?>
+                                                <form
+                                                    method="POST"
+                                                    action="eliminar.php"
+                                                    class="formulario-accion"
+                                                    onsubmit="return confirm('¿Deseas eliminar esta categoría?');"
+                                                >
 
-                                <form
-                                    method="POST"
-                                    action="eliminar.php"
-                                    onsubmit="return confirm('¿Deseas eliminar esta categoría?');"
-                                >
+                                                    <input
+                                                        type="hidden"
+                                                        name="id"
+                                                        value="<?= (int) $categoria['id'] ?>"
+                                                    >
 
-                                    <input
-                                        type="hidden"
-                                        name="id"
-                                        value="<?= (int) $categoria['id'] ?>"
-                                    >
+                                                    <input
+                                                        type="hidden"
+                                                        name="csrf_token"
+                                                        value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                    >
 
-                                    <input
-                                        type="hidden"
-                                        name="csrf_token"
-                                        value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"
-                                    >
+                                                    <button
+                                                        type="submit"
+                                                        class="boton boton-pequeno boton-desactivar"
+                                                    >
+                                                        Eliminar
+                                                    </button>
 
-                                    <button type="submit">
-                                        Eliminar
-                                    </button>
+                                                </form>
 
-                                </form>
+                                            <?php endif; ?>
 
-                            <?php endif; ?>
+                                        </div>
+                                    </td>
 
-                        </td>
+                                </tr>
 
-                    </tr>
+                            <?php endforeach; ?>
 
-                <?php endforeach; ?>
+                        <?php else: ?>
 
-            <?php else: ?>
+                            <tr>
+                                <td colspan="4" class="sin-resultados">
+                                    No se encontraron categorías.
+                                </td>
+                            </tr>
 
-                <tr>
-                    <td colspan="4">No se encontraron categorías.</td>
-                </tr>
+                        <?php endif; ?>
 
-            <?php endif; ?>
+                    </tbody>
 
-        </tbody>
+                </table>
 
-    </table>
+            </div>
 
-    <br>
+            <div class="paginacion">
 
-    <!-- Paginación -->
-    <p>
-        Página <?= $pagina ?> de <?= $totalPaginas ?>
-    </p>
+                <p>
+                    Página <?= $pagina ?> de <?= $totalPaginas ?>
+                </p>
 
-    <?php if ($pagina > 1): ?>
+                <div class="paginacion-botones">
 
-        <a href="?pagina=<?= $pagina - 1 ?>&buscar=<?= urlencode($buscar) ?>">
-            Anterior
-        </a>
+                    <?php if ($pagina > 1): ?>
 
-    <?php endif; ?>
+                        <a
+                            href="?pagina=<?= $pagina - 1 ?>&buscar=<?= urlencode($buscar) ?>"
+                            class="boton boton-secundario"
+                        >
+                            Anterior
+                        </a>
 
-    <?php if ($pagina < $totalPaginas): ?>
+                    <?php endif; ?>
 
-        <a href="?pagina=<?= $pagina + 1 ?>&buscar=<?= urlencode($buscar) ?>">
-            Siguiente
-        </a>
+                    <?php if ($pagina < $totalPaginas): ?>
 
-    <?php endif; ?>
+                        <a
+                            href="?pagina=<?= $pagina + 1 ?>&buscar=<?= urlencode($buscar) ?>"
+                            class="boton boton-secundario"
+                        >
+                            Siguiente
+                        </a>
+
+                    <?php endif; ?>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
 
 </body>
 </html>
-
