@@ -1,22 +1,34 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+
 requiereLogin();
 
-// Verificar permiso
+// Verificar permiso para consultar reportes
 if (!tienePermiso('reporte_consultar')) {
     http_response_code(403);
     exit('No tienes permiso para consultar reportes.');
 }
 
+// Conexión a la base de datos
 $pdo = require __DIR__ . '/../../app/config/config.php';
 
-// Fechas recibidas
+// Recibir fechas
 $fechaInicio = $_GET['fecha_inicio'] ?? '';
 $fechaFin = $_GET['fecha_fin'] ?? '';
 
 $resultados = [];
 $error = '';
+
+// Función para mostrar texto seguro
+function escapar($valor): string
+{
+    return htmlspecialchars(
+        (string) $valor,
+        ENT_QUOTES | ENT_SUBSTITUTE,
+        'UTF-8'
+    );
+}
 
 // Validar fechas
 if ($fechaInicio !== '' || $fechaFin !== '') {
@@ -24,8 +36,11 @@ if ($fechaInicio !== '' || $fechaFin !== '') {
     $inicio = DateTime::createFromFormat('!Y-m-d', $fechaInicio);
     $fin = DateTime::createFromFormat('!Y-m-d', $fechaFin);
 
-    $inicioValido = $inicio && $inicio->format('Y-m-d') === $fechaInicio;
-    $finValido = $fin && $fin->format('Y-m-d') === $fechaFin;
+    $inicioValido = $inicio
+        && $inicio->format('Y-m-d') === $fechaInicio;
+
+    $finValido = $fin
+        && $fin->format('Y-m-d') === $fechaFin;
 
     if (!$inicioValido || !$finValido) {
 
@@ -63,16 +78,6 @@ if ($fechaInicio !== '' || $fechaFin !== '') {
 
         $resultados = $consulta->fetchAll();
     }
-}
-
-// Función para mostrar texto seguro
-function escapar($valor): string
-{
-    return htmlspecialchars(
-        (string) $valor,
-        ENT_QUOTES | ENT_SUBSTITUTE,
-        'UTF-8'
-    );
 }
 
 ?>
@@ -137,7 +142,7 @@ function escapar($valor): string
 
         <?php if (empty($resultados)): ?>
 
-            <p>No se encontraron préstamos en ese periodo.</p>
+            <p>No se encontraron equipos prestados en ese periodo.</p>
 
         <?php else: ?>
 
@@ -181,3 +186,4 @@ function escapar($valor): string
 
 </body>
 </html>
+
