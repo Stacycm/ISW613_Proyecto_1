@@ -30,13 +30,16 @@ if (
 $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
 
 if (!$id || $id < 1) {
+    http_response_code(400);
     exit('ID de préstamo no válido.');
 }
 
 // Conexión
-$pdo = require __DIR__ . '/../../app/config/config.php';
+$pdo = null;
 
 try {
+
+    $pdo = require __DIR__ . '/../../app/config/config.php';
 
     // Iniciar transacción
     $pdo->beginTransaction();
@@ -193,7 +196,7 @@ try {
 } catch (Throwable $e) {
 
     // Deshacer cambios si ocurre un error
-    if ($pdo->inTransaction()) {
+    if ($pdo instanceof PDO && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
 

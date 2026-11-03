@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Validar CSRF
     if (
-        !isset($_POST['csrf_token']) ||
+        !isset($_POST['csrf_token'], $_SESSION['csrf_token']) ||
         !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])
     ) {
         http_response_code(403);
@@ -71,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $equipoIdsValidos = true;
 
     foreach ($equipoIds as $equipoId) {
+
         if (
             !is_scalar($equipoId) ||
             filter_var($equipoId, FILTER_VALIDATE_INT) === false ||
@@ -324,141 +325,214 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Valores para conservar el formulario después de un error
+$usuarioFormulario = $_POST['usuario_id'] ?? '';
+$fechaInicioFormulario = $_POST['fecha_inicio'] ?? '';
+$fechaFinFormulario = $_POST['fecha_fin'] ?? '';
+
+$equiposFormulario = $_POST['equipos'] ?? [];
+
+if (!is_array($equiposFormulario)) {
+    $equiposFormulario = [];
+}
+
+$equiposFormulario = array_map('intval', $equiposFormulario);
+
 ?>
 
-<h2>Registrar solicitud de préstamo</h2>
+<!DOCTYPE html>
+<html lang="es">
 
-<?php if ($mensaje !== ''): ?>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <p>
-        <?= htmlspecialchars(
-            $mensaje,
-            ENT_QUOTES | ENT_SUBSTITUTE,
-            'UTF-8'
-        ) ?>
-    </p>
+    <title>Registrar préstamo - SIGEL</title>
 
-<?php endif; ?>
+    <link rel="stylesheet" href="/css/estilos.css">
+</head>
 
-<form method="POST">
+<body>
 
-    <input
-        type="hidden"
-        name="csrf_token"
-        value="<?= htmlspecialchars(
-            $_SESSION['csrf_token'],
-            ENT_QUOTES | ENT_SUBSTITUTE,
-            'UTF-8'
-        ) ?>"
-    >
+<main class="contenedor contenedor-modulo">
 
-    <label>Usuario solicitante:</label>
+    <header class="titulo-modulo">
+        <div>
+            <h1>Registrar solicitud de préstamo</h1>
+            <p>Selecciona el usuario, las fechas y los equipos que desea solicitar.</p>
+        </div>
 
-    <select name="usuario_id" required>
+        <a href="listar.php" class="boton boton-secundario">
+            Volver a préstamos
+        </a>
+    </header>
 
-        <option value="">Selecciona un usuario</option>
+    <section class="panel-modulo formulario-panel">
 
-        <?php foreach ($usuarios as $usuario): ?>
+        <div class="panel-titulo">
+            <h2>Información de la solicitud</h2>
+        </div>
 
-            <option
-                value="<?= (int) $usuario['id'] ?>"
-                <?= (string) ($_POST['usuario_id'] ?? '') === (string) $usuario['id'] ? 'selected' : '' ?>
-            >
+        <?php if ($mensaje !== ''): ?>
+
+            <div class="mensaje mensaje-error">
                 <?= htmlspecialchars(
-                    $usuario['nombre'] . ' - ' . $usuario['correo'],
+                    $mensaje,
                     ENT_QUOTES | ENT_SUBSTITUTE,
                     'UTF-8'
                 ) ?>
-            </option>
+            </div>
 
-        <?php endforeach; ?>
+        <?php endif; ?>
 
-    </select>
+        <form method="POST" class="formulario-modulo">
 
-    <br><br>
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= htmlspecialchars(
+                    $_SESSION['csrf_token'],
+                    ENT_QUOTES | ENT_SUBSTITUTE,
+                    'UTF-8'
+                ) ?>"
+            >
 
-    <label>Fecha de inicio:</label>
+            <div class="campo-formulario">
+                <label for="usuario_id">Usuario solicitante:</label>
 
-    <input
-        type="date"
-        name="fecha_inicio"
-        value="<?= htmlspecialchars(
-            $_POST['fecha_inicio'] ?? '',
-            ENT_QUOTES | ENT_SUBSTITUTE,
-            'UTF-8'
-        ) ?>"
-        required
-    >
+                <select name="usuario_id" id="usuario_id" required>
 
-    <br><br>
+                    <option value="">Selecciona un usuario</option>
 
-    <label>Fecha de finalización:</label>
+                    <?php foreach ($usuarios as $usuario): ?>
 
-    <input
-        type="date"
-        name="fecha_fin"
-        value="<?= htmlspecialchars(
-            $_POST['fecha_fin'] ?? '',
-            ENT_QUOTES | ENT_SUBSTITUTE,
-            'UTF-8'
-        ) ?>"
-        required
-    >
+                        <option
+                            value="<?= (int) $usuario['id'] ?>"
+                            <?= (string) $usuarioFormulario === (string) $usuario['id'] ? 'selected' : '' ?>
+                        >
+                            <?= htmlspecialchars(
+                                $usuario['nombre'] . ' - ' . $usuario['correo'],
+                                ENT_QUOTES | ENT_SUBSTITUTE,
+                                'UTF-8'
+                            ) ?>
+                        </option>
 
-    <br><br>
+                    <?php endforeach; ?>
 
-    <label>Selecciona los equipos:</label>
+                </select>
+            </div>
 
-    <br>
-
-    <?php if (count($equipos) > 0): ?>
-
-        <?php foreach ($equipos as $equipo): ?>
-
-            <label>
+            <div class="campo-formulario">
+                <label for="fecha_inicio">Fecha de inicio:</label>
 
                 <input
-                    type="checkbox"
-                    name="equipos[]"
-                    value="<?= (int) $equipo['id'] ?>"
-                    <?= in_array(
-                        (int) $equipo['id'],
-                        array_map(
-                            'intval',
-                            is_array($_POST['equipos'] ?? null)
-                                ? $_POST['equipos']
-                                : []
-                        ),
-                        true
-                    ) ? 'checked' : '' ?>
+                    type="date"
+                    name="fecha_inicio"
+                    id="fecha_inicio"
+                    value="<?= htmlspecialchars(
+                        $fechaInicioFormulario,
+                        ENT_QUOTES | ENT_SUBSTITUTE,
+                        'UTF-8'
+                    ) ?>"
+                    required
                 >
+            </div>
 
-                <?= htmlspecialchars(
-                    $equipo['codigo'] . ' - ' . $equipo['nombre'],
-                    ENT_QUOTES | ENT_SUBSTITUTE,
-                    'UTF-8'
-                ) ?>
+            <div class="campo-formulario">
+                <label for="fecha_fin">Fecha de finalización:</label>
 
-            </label>
+                <input
+                    type="date"
+                    name="fecha_fin"
+                    id="fecha_fin"
+                    value="<?= htmlspecialchars(
+                        $fechaFinFormulario,
+                        ENT_QUOTES | ENT_SUBSTITUTE,
+                        'UTF-8'
+                    ) ?>"
+                    required
+                >
+            </div>
 
-            <br>
+            <div class="campo-formulario">
+                <label>Selecciona los equipos:</label>
 
-        <?php endforeach; ?>
+                <p class="ayuda-formulario">
+                    Puedes seleccionar uno o varios equipos disponibles.
+                </p>
 
-    <?php else: ?>
+                <?php if (count($equipos) > 0): ?>
 
-        <p>No hay equipos disponibles.</p>
+                    <div class="seleccion-equipos">
 
-    <?php endif; ?>
+                        <?php foreach ($equipos as $equipo): ?>
 
-    <br>
+                            <label class="opcion-equipo">
 
-    <button type="submit">
-        Registrar solicitud
-    </button>
+                                <input
+                                    type="checkbox"
+                                    name="equipos[]"
+                                    value="<?= (int) $equipo['id'] ?>"
+                                    <?= in_array(
+                                        (int) $equipo['id'],
+                                        $equiposFormulario,
+                                        true
+                                    ) ? 'checked' : '' ?>
+                                >
 
-</form>
+                                <span>
+                                    <strong><?= htmlspecialchars(
+                                        $equipo['nombre'],
+                                        ENT_QUOTES | ENT_SUBSTITUTE,
+                                        'UTF-8'
+                                    ) ?></strong>
 
-<br>
+                                    <small>
+                                        Código: <?= htmlspecialchars(
+                                            $equipo['codigo'],
+                                            ENT_QUOTES | ENT_SUBSTITUTE,
+                                            'UTF-8'
+                                        ) ?>
+                                    </small>
+                                </span>
 
-<a href="../dashboard.php">Volver al inicio</a>
+                            </label>
+
+                        <?php endforeach; ?>
+
+                    </div>
+
+                <?php else: ?>
+
+                    <p class="mensaje">
+                        No hay equipos disponibles para solicitar.
+                    </p>
+
+                <?php endif; ?>
+
+            </div>
+
+            <div class="acciones-formulario">
+
+                <a href="listar.php" class="boton boton-secundario">
+                    Cancelar
+                </a>
+
+                <button
+                    type="submit"
+                    class="boton boton-principal"
+                    <?= count($equipos) === 0 ? 'disabled' : '' ?>
+                >
+                    Registrar solicitud
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+</main>
+
+</body>
+</html>

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+
 requiereLogin();
 
 // Verificar permiso de consulta
@@ -179,316 +180,465 @@ function escapar($valor): string
     );
 }
 
+// Función para mostrar el estado con un estilo
+function claseEstado(string $estado): string
+{
+    $clases = [
+        'solicitado' => 'estado-solicitado',
+        'aprobado' => 'estado-aprobado',
+        'entregado' => 'estado-entregado',
+        'devuelto' => 'estado-devuelto',
+        'cancelado' => 'estado-cancelado'
+    ];
+
+    return $clases[$estado] ?? '';
+}
+
 ?>
 
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Préstamos - SIGEL</title>
+
+    <link rel="stylesheet" href="/css/estilos.css">
 </head>
 
 <body>
 
-    <h1>Gestión de préstamos</h1>
+<main class="contenedor contenedor-modulo">
 
-    <p>
-        <a href="../dashboard.php">Volver al dashboard</a>
-    </p>
+    <header class="titulo-modulo">
+        <div>
+            <h1>Gestión de préstamos</h1>
+            <p>Consulta y administra las solicitudes de préstamo de equipos.</p>
+        </div>
+
+        <a href="../dashboard.php" class="boton boton-secundario">
+            Volver al dashboard
+        </a>
+    </header>
 
     <?php if ($puedeGestionar): ?>
-        <p>
-            <a href="crear.php">Registrar nueva solicitud</a>
-        </p>
+        <div class="acciones-modulo">
+            <a href="crear.php" class="boton boton-principal">
+                + Registrar nueva solicitud
+            </a>
+        </div>
     <?php endif; ?>
 
+    <!-- Mensajes de confirmación -->
+
     <?php if (isset($_GET['creado'])): ?>
-        <p>La solicitud fue registrada correctamente.</p>
+        <div class="mensaje mensaje-exito">
+            La solicitud fue registrada correctamente.
+        </div>
     <?php endif; ?>
 
     <?php if (isset($_GET['aprobado'])): ?>
-        <p>El préstamo fue aprobado correctamente.</p>
+        <div class="mensaje mensaje-exito">
+            El préstamo fue aprobado correctamente.
+        </div>
     <?php endif; ?>
 
     <?php if (isset($_GET['entregado'])): ?>
-        <p>El préstamo fue entregado correctamente.</p>
+        <div class="mensaje mensaje-exito">
+            El préstamo fue entregado correctamente.
+        </div>
     <?php endif; ?>
 
     <?php if (isset($_GET['devuelto'])): ?>
-        <p>La devolución fue registrada correctamente.</p>
+        <div class="mensaje mensaje-exito">
+            La devolución fue registrada correctamente.
+        </div>
     <?php endif; ?>
 
     <?php if (isset($_GET['cancelado'])): ?>
-        <p>El préstamo fue cancelado correctamente.</p>
+        <div class="mensaje mensaje-exito">
+            El préstamo fue cancelado correctamente.
+        </div>
     <?php endif; ?>
 
-    <hr>
+    <!-- Búsqueda y filtros -->
 
-    <!-- Búsqueda y filtro -->
-    <form method="GET" action="listar.php">
+    <section class="panel-modulo">
 
-        <label for="busqueda">Buscar:</label>
+        <div class="panel-titulo">
+            <h2>Buscar préstamos</h2>
+        </div>
 
-        <input
-            type="text"
-            name="busqueda"
-            id="busqueda"
-            value="<?= escapar($busqueda) ?>"
-            placeholder="Usuario, correo o equipo"
-        >
+        <form method="GET" action="listar.php" class="formulario-busqueda">
 
-        <label for="estado">Estado:</label>
+            <div class="campo-formulario">
+                <label for="busqueda">Buscar por usuario o equipo:</label>
 
-        <select name="estado" id="estado">
-            <option value="">Todos</option>
-
-            <?php foreach ($estadosPermitidos as $opcion): ?>
-                <option
-                    value="<?= escapar($opcion) ?>"
-                    <?= $estado === $opcion ? 'selected' : '' ?>
+                <input
+                    type="text"
+                    name="busqueda"
+                    id="busqueda"
+                    value="<?= escapar($busqueda) ?>"
+                    placeholder="Nombre, correo o código del equipo"
                 >
-                    <?= ucfirst($opcion) ?>
-                </option>
-            <?php endforeach; ?>
+            </div>
 
-        </select>
+            <div class="campo-formulario">
+                <label for="estado">Filtrar por estado:</label>
 
-        <button type="submit">Buscar</button>
+                <select name="estado" id="estado">
 
-        <a href="listar.php">Limpiar</a>
+                    <option value="">Todos los estados</option>
 
-    </form>
+                    <?php foreach ($estadosPermitidos as $opcion): ?>
 
-    <hr>
-
-    <p>
-        Total de préstamos encontrados: <?= $totalPrestamos ?>
-    </p>
-
-    <?php if (empty($prestamos)): ?>
-
-        <p>No se encontraron préstamos.</p>
-
-    <?php else: ?>
-
-        <?php foreach ($prestamos as $prestamo): ?>
-
-            <section>
-
-                <h2>Préstamo #<?= (int) $prestamo['id'] ?></h2>
-
-                <p>
-                    <strong>Usuario:</strong>
-                    <?= escapar($prestamo['usuario_nombre']) ?>
-                </p>
-
-                <p>
-                    <strong>Correo:</strong>
-                    <?= escapar($prestamo['usuario_correo']) ?>
-                </p>
-
-                <p>
-                    <strong>Fecha de inicio:</strong>
-                    <?= escapar($prestamo['fecha_inicio']) ?>
-                </p>
-
-                <p>
-                    <strong>Fecha de finalización:</strong>
-                    <?= escapar($prestamo['fecha_fin']) ?>
-                </p>
-
-                <p>
-                    <strong>Operador:</strong>
-                    <?= escapar($prestamo['operador_nombre'] ?? 'Sin asignar') ?>
-                </p>
-
-                <p>
-                    <strong>Estado:</strong>
-                    <?= escapar(ucfirst($prestamo['estado'])) ?>
-                </p>
-
-                <h3>Equipos</h3>
-
-                <?php if (!empty($detalles[$prestamo['id']])): ?>
-
-                    <ul>
-
-                        <?php foreach ($detalles[$prestamo['id']] as $detalle): ?>
-
-                            <li>
-
-                                <?= escapar($detalle['equipo_nombre']) ?>
-                                (<?= escapar($detalle['equipo_codigo']) ?>)
-
-                                <?php if ($detalle['fecha_devolucion'] !== null): ?>
-
-                                    <p>
-                                        Devuelto el:
-                                        <?= escapar($detalle['fecha_devolucion']) ?>
-                                    </p>
-
-                                <?php elseif (
-                                    $prestamo['estado'] === 'entregado'
-                                    && $puedeDevolver
-                                ): ?>
-
-                                    <form method="POST" action="devolver.php">
-
-                                        <input
-                                            type="hidden"
-                                            name="csrf_token"
-                                            value="<?= escapar($csrf) ?>"
-                                        >
-
-                                        <input
-                                            type="hidden"
-                                            name="prestamo_id"
-                                            value="<?= (int) $prestamo['id'] ?>"
-                                        >
-
-                                        <input
-                                            type="hidden"
-                                            name="equipo_id"
-                                            value="<?= (int) $detalle['equipo_id'] ?>"
-                                        >
-
-                                        <button type="submit">
-                                            Registrar devolución
-                                        </button>
-
-                                    </form>
-
-                                <?php else: ?>
-
-                                    <p>Pendiente de devolución.</p>
-
-                                <?php endif; ?>
-
-                            </li>
-
-                        <?php endforeach; ?>
-
-                    </ul>
-
-                <?php else: ?>
-
-                    <p>Este préstamo no tiene equipos registrados.</p>
-
-                <?php endif; ?>
-
-                <!-- Acciones del préstamo -->
-
-                <?php if (
-                    $prestamo['estado'] === 'solicitado'
-                    && $puedeGestionar
-                ): ?>
-
-                    <form method="POST" action="aprobar.php">
-
-                        <input
-                            type="hidden"
-                            name="csrf_token"
-                            value="<?= escapar($csrf) ?>"
+                        <option
+                            value="<?= escapar($opcion) ?>"
+                            <?= $estado === $opcion ? 'selected' : '' ?>
                         >
+                            <?= escapar(ucfirst($opcion)) ?>
+                        </option>
 
-                        <input
-                            type="hidden"
-                            name="id"
-                            value="<?= (int) $prestamo['id'] ?>"
-                        >
+                    <?php endforeach; ?>
 
-                        <button type="submit">Aprobar solicitud</button>
+                </select>
+            </div>
 
-                    </form>
+            <div class="acciones-busqueda">
 
-                <?php endif; ?>
+                <button type="submit" class="boton boton-principal">
+                    Buscar
+                </button>
 
-                <?php if (
-                    $prestamo['estado'] === 'aprobado'
-                    && $puedeGestionar
-                ): ?>
+                <a href="listar.php" class="boton boton-secundario">
+                    Limpiar filtros
+                </a>
 
-                    <form method="POST" action="entregar.php">
+            </div>
 
-                        <input
-                            type="hidden"
-                            name="csrf_token"
-                            value="<?= escapar($csrf) ?>"
-                        >
+        </form>
 
-                        <input
-                            type="hidden"
-                            name="id"
-                            value="<?= (int) $prestamo['id'] ?>"
-                        >
+    </section>
 
-                        <button type="submit">Registrar entrega</button>
+    <!-- Resultados -->
 
-                    </form>
+    <section class="panel-modulo">
 
-                <?php endif; ?>
+        <div class="panel-titulo">
+            <h2>Solicitudes registradas</h2>
 
-                <?php if (
-                    in_array($prestamo['estado'], ['solicitado', 'aprobado'], true)
-                    && $puedeGestionar
-                ): ?>
+            <span class="contador-resultados">
+                <?= $totalPrestamos ?> préstamo(s) encontrado(s)
+            </span>
+        </div>
 
-                    <form method="POST" action="cancelar.php">
+        <?php if (empty($prestamos)): ?>
 
-                        <input
-                            type="hidden"
-                            name="csrf_token"
-                            value="<?= escapar($csrf) ?>"
-                        >
+            <div class="sin-resultados">
+                <p>No se encontraron préstamos.</p>
+                <span>Prueba cambiando los filtros de búsqueda.</span>
+            </div>
 
-                        <input
-                            type="hidden"
-                            name="id"
-                            value="<?= (int) $prestamo['id'] ?>"
-                        >
+        <?php else: ?>
 
-                        <button type="submit">Cancelar préstamo</button>
+            <div class="lista-prestamos">
 
-                    </form>
+                <?php foreach ($prestamos as $prestamo): ?>
 
-                <?php endif; ?>
+                    <article class="tarjeta-prestamo">
 
-                <hr>
+                        <div class="encabezado-prestamo">
 
-            </section>
+                            <div>
+                                <span class="numero-prestamo">
+                                    Préstamo #<?= (int) $prestamo['id'] ?>
+                                </span>
 
-        <?php endforeach; ?>
+                                <h3>
+                                    <?= escapar($prestamo['usuario_nombre']) ?>
+                                </h3>
+                            </div>
 
-    <?php endif; ?>
+                            <span class="estado-prestamo <?= escapar(claseEstado($prestamo['estado'])) ?>">
+                                <?= escapar(ucfirst($prestamo['estado'])) ?>
+                            </span>
+
+                        </div>
+
+                        <div class="datos-prestamo">
+
+                            <div>
+                                <strong>Correo</strong>
+                                <span><?= escapar($prestamo['usuario_correo']) ?></span>
+                            </div>
+
+                            <div>
+                                <strong>Fecha de inicio</strong>
+                                <span><?= escapar($prestamo['fecha_inicio']) ?></span>
+                            </div>
+
+                            <div>
+                                <strong>Fecha de finalización</strong>
+                                <span><?= escapar($prestamo['fecha_fin']) ?></span>
+                            </div>
+
+                            <div>
+                                <strong>Operador</strong>
+                                <span>
+                                    <?= escapar($prestamo['operador_nombre'] ?? 'Sin asignar') ?>
+                                </span>
+                            </div>
+
+                        </div>
+
+                        <div class="equipos-prestamo">
+
+                            <h4>Equipos solicitados</h4>
+
+                            <?php if (!empty($detalles[$prestamo['id']])): ?>
+
+                                <div class="lista-equipos-prestamo">
+
+                                    <?php foreach ($detalles[$prestamo['id']] as $detalle): ?>
+
+                                        <div class="equipo-prestamo">
+
+                                            <div class="informacion-equipo-prestamo">
+
+                                                <strong>
+                                                    <?= escapar($detalle['equipo_nombre']) ?>
+                                                </strong>
+
+                                                <span>
+                                                    Código: <?= escapar($detalle['equipo_codigo']) ?>
+                                                </span>
+
+                                            </div>
+
+                                            <div class="acciones-equipo-prestamo">
+
+                                                <?php if ($detalle['fecha_devolucion'] !== null): ?>
+
+                                                    <span class="etiqueta-devuelto">
+                                                        Devuelto el:
+                                                        <?= escapar($detalle['fecha_devolucion']) ?>
+                                                    </span>
+
+                                                <?php elseif (
+                                                    $prestamo['estado'] === 'entregado'
+                                                    && $puedeDevolver
+                                                ): ?>
+
+                                                    <form method="POST" action="devolver.php">
+
+                                                        <input
+                                                            type="hidden"
+                                                            name="csrf_token"
+                                                            value="<?= escapar($csrf) ?>"
+                                                        >
+
+                                                        <input
+                                                            type="hidden"
+                                                            name="prestamo_id"
+                                                            value="<?= (int) $prestamo['id'] ?>"
+                                                        >
+
+                                                        <input
+                                                            type="hidden"
+                                                            name="equipo_id"
+                                                            value="<?= (int) $detalle['equipo_id'] ?>"
+                                                        >
+
+                                                        <button
+                                                            type="submit"
+                                                            class="boton boton-pequeno boton-devolver"
+                                                        >
+                                                            Registrar devolución
+                                                        </button>
+
+                                                    </form>
+
+                                                <?php else: ?>
+
+                                                    <span class="texto-pendiente">
+                                                        Pendiente de devolución
+                                                    </span>
+
+                                                <?php endif; ?>
+
+                                            </div>
+
+                                        </div>
+
+                                    <?php endforeach; ?>
+
+                                </div>
+
+                            <?php else: ?>
+
+                                <p>Este préstamo no tiene equipos registrados.</p>
+
+                            <?php endif; ?>
+
+                        </div>
+
+                        <!-- Acciones del préstamo -->
+
+                        <?php if (
+                            $prestamo['estado'] === 'solicitado'
+                            && $puedeGestionar
+                        ): ?>
+
+                            <div class="acciones-prestamo">
+
+                                <form method="POST" action="aprobar.php">
+
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="<?= escapar($csrf) ?>"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="id"
+                                        value="<?= (int) $prestamo['id'] ?>"
+                                    >
+
+                                    <button
+                                        type="submit"
+                                        class="boton boton-pequeno boton-aprobar"
+                                    >
+                                        Aprobar solicitud
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+                        <?php endif; ?>
+
+                        <?php if (
+                            $prestamo['estado'] === 'aprobado'
+                            && $puedeGestionar
+                        ): ?>
+
+                            <div class="acciones-prestamo">
+
+                                <form method="POST" action="entregar.php">
+
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="<?= escapar($csrf) ?>"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="id"
+                                        value="<?= (int) $prestamo['id'] ?>"
+                                    >
+
+                                    <button
+                                        type="submit"
+                                        class="boton boton-pequeno boton-entregar"
+                                    >
+                                        Registrar entrega
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+                        <?php endif; ?>
+
+                        <?php if (
+                            in_array($prestamo['estado'], ['solicitado', 'aprobado'], true)
+                            && $puedeGestionar
+                        ): ?>
+
+                            <div class="acciones-prestamo">
+
+                                <form method="POST" action="cancelar.php">
+
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="<?= escapar($csrf) ?>"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="id"
+                                        value="<?= (int) $prestamo['id'] ?>"
+                                    >
+
+                                    <button
+                                        type="submit"
+                                        class="boton boton-pequeno boton-cancelar"
+                                    >
+                                        Cancelar préstamo
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+                        <?php endif; ?>
+
+                    </article>
+
+                <?php endforeach; ?>
+
+            </div>
+
+        <?php endif; ?>
+
+    </section>
 
     <!-- Paginación -->
 
     <?php if ($totalPrestamos > 0): ?>
 
-        <nav>
+        <nav class="paginacion">
 
-            <?php if ($pagina > 1): ?>
+            <span>
+                Página <?= $pagina ?> de <?= $totalPaginas ?>
+            </span>
 
-                <a href="?pagina=<?= $pagina - 1 ?>&busqueda=<?= urlencode($busqueda) ?>&estado=<?= urlencode($estado) ?>">
-                    Anterior
-                </a>
+            <div class="paginacion-botones">
 
-            <?php endif; ?>
+                <?php if ($pagina > 1): ?>
 
-            Página <?= $pagina ?> de <?= $totalPaginas ?>
+                    <a
+                        class="boton boton-secundario"
+                        href="?pagina=<?= $pagina - 1 ?>&busqueda=<?= urlencode($busqueda) ?>&estado=<?= urlencode($estado) ?>"
+                    >
+                        Anterior
+                    </a>
 
-            <?php if ($pagina < $totalPaginas): ?>
+                <?php endif; ?>
 
-                <a href="?pagina=<?= $pagina + 1 ?>&busqueda=<?= urlencode($busqueda) ?>&estado=<?= urlencode($estado) ?>">
-                    Siguiente
-                </a>
+                <?php if ($pagina < $totalPaginas): ?>
 
-            <?php endif; ?>
+                    <a
+                        class="boton boton-secundario"
+                        href="?pagina=<?= $pagina + 1 ?>&busqueda=<?= urlencode($busqueda) ?>&estado=<?= urlencode($estado) ?>"
+                    >
+                        Siguiente
+                    </a>
+
+                <?php endif; ?>
+
+            </div>
 
         </nav>
 
     <?php endif; ?>
+
+</main>
 
 </body>
 </html>

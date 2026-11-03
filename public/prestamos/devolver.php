@@ -41,13 +41,16 @@ if (
     !$prestamo_id || $prestamo_id < 1 ||
     !$equipo_id || $equipo_id < 1
 ) {
+    http_response_code(400);
     exit('Datos no válidos.');
 }
 
 // Conexión
-$pdo = require __DIR__ . '/../../app/config/config.php';
+$pdo = null;
 
 try {
+
+    $pdo = require __DIR__ . '/../../app/config/config.php';
 
     // Iniciar transacción
     $pdo->beginTransaction();
@@ -243,7 +246,7 @@ try {
 } catch (Throwable $e) {
 
     // Deshacer cambios si ocurre un error
-    if ($pdo->inTransaction()) {
+    if ($pdo instanceof PDO && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
