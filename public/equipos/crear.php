@@ -94,7 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     . $tiposPermitidos[$mime];
 
                 // Carpeta donde se guardarán las imágenes
-                $carpetaImagenes = __DIR__ . '/../uploads/equipos';
+                $carpetaImagenes = dirname(__DIR__) . '/uploads/equipos';
+                
 
                 if (!is_dir($carpetaImagenes)) {
                     if (!mkdir($carpetaImagenes, 0755, true)) {
@@ -116,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
 
                         // Ruta que guardaremos en la base de datos
-                        $imagenRuta = 'uploads/equipos/' . $nombreArchivo;
+                        $imagenRuta = '/uploads/equipos/' . $nombreArchivo;
                     }
                 }
             }
