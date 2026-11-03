@@ -2,46 +2,66 @@
 
 require_once __DIR__ . '/../app/includes/auth.php';
 
-// Obtener la conexión a la base de datos
-$pdo = require __DIR__ . '/../app/config/config.php';
-
-// Si existe la cookie Recordarme, eliminar su token
-if (isset($_COOKIE['recordarme'])) {
-
-    $partes = explode(':', $_COOKIE['recordarme'], 2);
-
-    if (
-        count($partes) === 2 &&
-        preg_match('/^[a-f0-9]{24}$/', $partes[0])
-    ) {
-
-        $sql = "DELETE FROM auth_tokens
-                WHERE selector = :selector
-                AND usuario_id = :usuario_id";
-
-        $consulta = $pdo->prepare($sql);
-
-        $consulta->execute([
-            'selector' => $partes[0],
-            'usuario_id' => $_SESSION['id'] ?? 0
-        ]);
-    }
+// Aceptar solamente solicitudes POST.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    exit('Método no permitido.');
 }
 
-// Eliminar la cookie Recordarme
-setcookie('recordarme', '', [
-    'expires' => time() - 3600,
-    'path' => '/',
-    'secure' => !empty($_SERVER['HTTPS']) &&
-                $_SERVER['HTTPS'] !== 'off',
-    'httponly' => true,
-    'samesite' => 'Lax'
-]);
+// Comprobar token CSRF.
+if (
+    !isset($_POST['csrf_token'], $_SESSION['csrf_token_logout']) ||
+    !hash_equals(
+        $_SESSION['csrf_token_logout'],
+        $_POST['csrf_token']
+    )
+) {
+    http_response_code(403);
+    exit('Solicitud no válida.');
+}
 
-// Eliminar todos los datos de la sesión
+// Obtener conexión.
+$pdo = require __DIR__ . '/../app/config/config.php';
+
+try {
+
+    // Eliminar token persistente si existe.
+    if (isset($_COOKIE['recordarme'])) {
+
+        $partes = explode(':', $_COOKIE['recordarme']);
+
+        if (
+            count($partes) === 2 &&
+            preg_match('/^[a-f0-9]{24}$/', $partes[0])
+        ) {
+
+            $sql = "DELETE FROM auth_tokens
+                    WHERE selector = :selector";
+
+            $consulta = $pdo->prepare($sql);
+
+            $consulta->execute([
+                'selector' => $partes[0]
+            ]);
+        }
+    }
+
+} catch (Throwable $e) {
+
+    error_log(
+        'Error al cerrar sesión: ' . $e->getMessage()
+    );
+
+} finally {
+
+    // Eliminar cookie Recordarme.
+    eliminarCookieRecordarme();
+}
+
+// Vaciar datos de sesión.
 $_SESSION = [];
 
-// Eliminar la cookie de sesión
+// Eliminar cookie de sesión.
 if (ini_get('session.use_cookies')) {
 
     $params = session_get_cookie_params();
@@ -60,9 +80,10 @@ if (ini_get('session.use_cookies')) {
     );
 }
 
-// Destruir la sesión
+// Destruir sesión.
 session_destroy();
 
-// Regresar al login
-header('Location: login.php');
+// Regresar al login.
+header('Location: /login.php');
 exit;
+
