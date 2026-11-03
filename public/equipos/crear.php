@@ -32,9 +32,10 @@ if (empty($_SESSION['csrf_token'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (
-        !isset($_POST['csrf_token']) ||
+        !isset($_POST['csrf_token'], $_SESSION['csrf_token']) ||
         !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])
     ) {
+        http_response_code(403);
         exit('Solicitud no válida.');
     }
 
@@ -54,10 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'Mantenimiento'
     ];
 
-    // ==========================
     // Validar imagen
-    // ==========================
-
     $imagenRuta = null;
 
     if (
@@ -95,7 +93,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // Carpeta donde se guardarán las imágenes
                 $carpetaImagenes = dirname(__DIR__) . '/uploads/equipos';
-                
 
                 if (!is_dir($carpetaImagenes)) {
                     if (!mkdir($carpetaImagenes, 0755, true)) {
@@ -124,10 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // ==========================
     // Validar datos del equipo
-    // ==========================
-
     if ($mensaje === '') {
 
         if ($codigo === '' || $nombre === '') {
@@ -141,10 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // ==========================
     // Verificar categoría
-    // ==========================
-
     if ($mensaje === '') {
 
         $sqlCategoria = "SELECT COUNT(*)
@@ -163,10 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // ==========================
     // Guardar equipo
-    // ==========================
-
     if ($mensaje === '') {
 
         try {
@@ -260,124 +248,186 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Recuperar valores para mostrar si hay errores
+$codigoFormulario = $_POST['codigo'] ?? '';
+$nombreFormulario = $_POST['nombre'] ?? '';
+$categoriaFormulario = $_POST['categoria_id'] ?? '';
+$estadoFormulario = $_POST['estado'] ?? 'Disponible';
+
 ?>
 
-<h2>Registrar equipo</h2>
+<!DOCTYPE html>
+<html lang="es">
 
-<?php if ($mensaje !== ''): ?>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar equipo - SIGEL</title>
+    <link rel="stylesheet" href="/css/estilos.css">
+</head>
 
-    <p>
-        <?= htmlspecialchars(
-            $mensaje,
-            ENT_QUOTES | ENT_SUBSTITUTE,
-            'UTF-8'
-        ) ?>
-    </p>
+<body>
 
-<?php endif; ?>
+    <main class="contenedor contenedor-modulo">
 
-<form method="POST" enctype="multipart/form-data">
+        <header class="titulo-modulo">
+            <div>
+                <h1>Registrar equipo</h1>
+                <p>Completa la información para agregar un nuevo equipo.</p>
+            </div>
 
-    <input
-        type="hidden"
-        name="csrf_token"
-        value="<?= htmlspecialchars(
-            $_SESSION['csrf_token'],
-            ENT_QUOTES | ENT_SUBSTITUTE,
-            'UTF-8'
-        ) ?>"
-    >
+            <a href="listar.php" class="boton boton-secundario">
+                Volver a equipos
+            </a>
+        </header>
 
-    <label>Código:</label>
+        <section class="panel-modulo formulario-panel">
 
-    <input
-        type="text"
-        name="codigo"
-        required
-    >
+            <div class="panel-titulo">
+                <h2>Información del equipo</h2>
+            </div>
 
-    <br><br>
+            <?php if ($mensaje !== ''): ?>
+                <div class="mensaje mensaje-error">
+                    <?= htmlspecialchars(
+                        $mensaje,
+                        ENT_QUOTES | ENT_SUBSTITUTE,
+                        'UTF-8'
+                    ) ?>
+                </div>
+            <?php endif; ?>
 
-    <label>Nombre:</label>
+            <form
+                method="POST"
+                action="crear.php"
+                enctype="multipart/form-data"
+                class="formulario-modulo"
+            >
 
-    <input
-        type="text"
-        name="nombre"
-        required
-    >
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= htmlspecialchars(
+                        $_SESSION['csrf_token'],
+                        ENT_QUOTES | ENT_SUBSTITUTE,
+                        'UTF-8'
+                    ) ?>"
+                >
 
-    <br><br>
+                <div class="campo-formulario">
+                    <label for="codigo">Código del equipo:</label>
 
-    <label>Categoría:</label>
+                    <input
+                        type="text"
+                        id="codigo"
+                        name="codigo"
+                        placeholder="Ej. EQ-001"
+                        value="<?= htmlspecialchars($codigoFormulario, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        required
+                    >
+                </div>
 
-    <select name="categoria_id" required>
+                <div class="campo-formulario">
+                    <label for="nombre">Nombre del equipo:</label>
 
-        <option value="">
-            Selecciona una categoría
-        </option>
+                    <input
+                        type="text"
+                        id="nombre"
+                        name="nombre"
+                        placeholder="Ej. Computadora portátil"
+                        value="<?= htmlspecialchars($nombreFormulario, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        required
+                    >
+                </div>
 
-        <?php foreach ($categorias as $categoria): ?>
+                <div class="campo-formulario">
+                    <label for="categoria_id">Categoría:</label>
 
-            <option value="<?= (int) $categoria['id'] ?>">
+                    <select id="categoria_id" name="categoria_id" required>
 
-                <?= htmlspecialchars(
-                    $categoria['nombre'],
-                    ENT_QUOTES | ENT_SUBSTITUTE,
-                    'UTF-8'
-                ) ?>
+                        <option value="">
+                            Selecciona una categoría
+                        </option>
 
-            </option>
+                        <?php foreach ($categorias as $categoria): ?>
 
-        <?php endforeach; ?>
+                            <option
+                                value="<?= (int) $categoria['id'] ?>"
+                                <?= (string) $categoriaFormulario === (string) $categoria['id'] ? 'selected' : '' ?>
+                            >
+                                <?= htmlspecialchars(
+                                    $categoria['nombre'],
+                                    ENT_QUOTES | ENT_SUBSTITUTE,
+                                    'UTF-8'
+                                ) ?>
+                            </option>
 
-    </select>
+                        <?php endforeach; ?>
 
-    <br><br>
+                    </select>
+                </div>
 
-    <label>Estado:</label>
+                <div class="campo-formulario">
+                    <label for="estado">Estado del equipo:</label>
 
-    <select name="estado" required>
+                    <select id="estado" name="estado" required>
 
-        <option value="Disponible">
-            Disponible
-        </option>
+                        <option
+                            value="Disponible"
+                            <?= $estadoFormulario === 'Disponible' ? 'selected' : '' ?>
+                        >
+                            Disponible
+                        </option>
 
-        <option value="Prestado">
-            Prestado
-        </option>
+                        <option
+                            value="Prestado"
+                            <?= $estadoFormulario === 'Prestado' ? 'selected' : '' ?>
+                        >
+                            Prestado
+                        </option>
 
-        <option value="Mantenimiento">
-            Mantenimiento
-        </option>
+                        <option
+                            value="Mantenimiento"
+                            <?= $estadoFormulario === 'Mantenimiento' ? 'selected' : '' ?>
+                        >
+                            Mantenimiento
+                        </option>
 
-    </select>
+                    </select>
+                </div>
 
-    <br><br>
+                <div class="campo-formulario">
+                    <label for="imagen">Imagen del equipo:</label>
 
-    <label>Imagen del equipo:</label>
+                    <input
+                        type="file"
+                        id="imagen"
+                        name="imagen"
+                        accept=".jpg,.jpeg,.png,.webp"
+                    >
 
-    <input
-        type="file"
-        name="imagen"
-        accept=".jpg,.jpeg,.png,.webp"
-    >
+                    <small>
+                        Formatos permitidos: JPG, PNG y WEBP. Tamaño máximo: 5 MB.
+                    </small>
+                </div>
 
-    <br>
+                <div class="acciones-formulario">
 
-    <small>
-        Formatos permitidos: JPG, PNG y WEBP. Máximo 5 MB.
-    </small>
+                    <a href="listar.php" class="boton boton-secundario">
+                        Cancelar
+                    </a>
 
-    <br><br>
+                    <button type="submit" class="boton boton-principal">
+                        Guardar equipo
+                    </button>
 
-    <button type="submit">
-        Guardar equipo
-    </button>
+                </div>
 
-</form>
+            </form>
 
-<br>
+        </section>
 
-<a href="listar.php">
-    Volver a la lista
-</a>
+    </main>
+
+</body>
+</html>

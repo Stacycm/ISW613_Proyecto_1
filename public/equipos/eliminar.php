@@ -52,7 +52,9 @@ try {
     $equipo = $consulta->fetch();
 
     if (!$equipo) {
-        throw new RuntimeException('El equipo no existe o ya fue eliminado.');
+        throw new RuntimeException(
+            'El equipo no existe o ya fue eliminado.'
+        );
     }
 
     // Comprobar si el equipo tiene préstamos asociados
@@ -91,14 +93,22 @@ try {
     $consultaEliminar->execute(['id' => $id]);
 
     if ($consultaEliminar->rowCount() === 0) {
-        throw new RuntimeException('No se pudo eliminar el equipo.');
+        throw new RuntimeException(
+            'No se pudo eliminar el equipo.'
+        );
     }
 
-    // Guardar los valores posteriores
-    $consultaFecha = $pdo->query("SELECT eliminado_en FROM equipos WHERE id = " . (int) $id);
+    // Obtener la fecha de eliminación
+    $sqlFecha = "SELECT eliminado_en
+                 FROM equipos
+                 WHERE id = :id";
+
+    $consultaFecha = $pdo->prepare($sqlFecha);
+    $consultaFecha->execute(['id' => $id]);
 
     $fechaEliminacion = $consultaFecha->fetchColumn();
 
+    // Guardar los valores posteriores
     $valoresDespues = [
         'codigo' => $equipo['codigo'],
         'nombre' => $equipo['nombre'],
@@ -128,7 +138,7 @@ try {
 } catch (Throwable $e) {
 
     // Deshacer los cambios si ocurre un error
-    if ($pdo->inTransaction()) {
+    if ($pdo instanceof PDO && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
@@ -142,3 +152,4 @@ try {
     http_response_code(500);
     exit('Ocurrió un error al eliminar el equipo.');
 }
+

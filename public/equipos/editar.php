@@ -46,6 +46,13 @@ $sqlCategorias = "SELECT id, nombre
 
 $categorias = $pdo->query($sqlCategorias)->fetchAll();
 
+// Estados permitidos
+$estadosPermitidos = [
+    'Disponible',
+    'Prestado',
+    'Mantenimiento'
+];
+
 // Crear token CSRF
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -54,9 +61,10 @@ if (empty($_SESSION['csrf_token'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (
-        !isset($_POST['csrf_token']) ||
+        !isset($_POST['csrf_token'], $_SESSION['csrf_token']) ||
         !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])
     ) {
+        http_response_code(403);
         exit('Solicitud no válida.');
     }
 
@@ -69,12 +77,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     );
 
     $estado = $_POST['estado'] ?? '';
-
-    $estadosPermitidos = [
-        'Disponible',
-        'Prestado',
-        'Mantenimiento'
-    ];
 
     $imagenNueva = null;
     $rutaImagenAnterior = $equipo['imagen_ruta'];
@@ -140,29 +142,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             } else {
 
-                $carpeta = __DIR__ . '/../uploads/equipos/';
+                // Carpeta pública de imágenes
+                $carpeta = dirname(__DIR__) . '/uploads/equipos/';
 
                 if (!is_dir($carpeta)) {
-                    mkdir($carpeta, 0755, true);
+                    if (!mkdir($carpeta, 0755, true)) {
+                        $mensaje = 'No se pudo crear la carpeta de imágenes.';
+                    }
                 }
 
-                $nombreArchivo = bin2hex(random_bytes(16))
-                    . '.' . $tiposPermitidos[$tipo];
+                if ($mensaje === '') {
 
-                $rutaDestino = $carpeta . $nombreArchivo;
+                    $nombreArchivo = bin2hex(random_bytes(16))
+                        . '.' . $tiposPermitidos[$tipo];
 
-                if (
-                    move_uploaded_file(
-                        $_FILES['imagen']['tmp_name'],
-                        $rutaDestino
-                    )
-                ) {
-                    $imagenNueva = $rutaDestino;
-                    $archivoSubido = $rutaDestino;
-                    $rutaImagenNueva = 'uploads/equipos/' . $nombreArchivo;
+                    $rutaDestino = $carpeta . $nombreArchivo;
 
-                } else {
-                    $mensaje = 'No se pudo guardar la imagen.';
+                    if (
+                        move_uploaded_file(
+                            $_FILES['imagen']['tmp_name'],
+                            $rutaDestino
+                        )
+                    ) {
+                        $imagenNueva = $rutaDestino;
+                        $archivoSubido = $rutaDestino;
+
+                        // Mantener el mismo formato de ruta que crear.php
+                        $rutaImagenNueva = '/uploads/equipos/' . $nombreArchivo;
+
+                    } else {
+                        $mensaje = 'No se pudo guardar la imagen.';
+                    }
                 }
             }
         }
@@ -228,6 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'imagen_ruta' => $rutaImagenNueva
             ];
 
+            // Registrar cambios en bitácora
             registrarBitacora(
                 $pdo,
                 'EDITAR',
@@ -244,7 +255,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $imagenNueva !== null &&
                 !empty($rutaImagenAnterior)
             ) {
-                $rutaAnteriorCompleta = __DIR__ . '/../' . $rutaImagenAnterior;
+                $rutaAnteriorCompleta = dirname(__DIR__) . '/'
+                    . ltrim($rutaImagenAnterior, '/');
 
                 if (is_file($rutaAnteriorCompleta)) {
                     unlink($rutaAnteriorCompleta);
@@ -286,102 +298,215 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Valores que se mostrarán en el formulario
+$codigoFormulario = $_POST['codigo'] ?? $equipo['codigo'];
+$nombreFormulario = $_POST['nombre'] ?? $equipo['nombre'];
+$categoriaFormulario = $_POST['categoria_id'] ?? $equipo['categoria_id'];
+$estadoFormulario = $_POST['estado'] ?? $equipo['estado'];
+
+$rutaImagenMostrar = !empty($equipo['imagen_ruta'])
+    ? '/' . ltrim($equipo['imagen_ruta'], '/')
+    : null;
+
 ?>
 
-<h2>Editar equipo</h2>
+<!DOCTYPE html>
+<html lang="es">
 
-<?php if ($mensaje !== ''): ?>
-    <p>
-        <?= htmlspecialchars($mensaje, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-    </p>
-<?php endif; ?>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar equipo - SIGEL</title>
+    <link rel="stylesheet" href="/css/estilos.css">
+</head>
 
-<form method="POST" enctype="multipart/form-data">
+<body>
 
-    <input type="hidden" name="id" value="<?= (int) $equipo['id'] ?>">
+    <main class="contenedor contenedor-modulo">
 
-    <input
-        type="hidden"
-        name="csrf_token"
-        value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-    >
+        <header class="titulo-modulo">
+            <div>
+                <h1>Editar equipo</h1>
+                <p>Modifica la información del equipo seleccionado.</p>
+            </div>
 
-    <label>Código:</label>
-    <input
-        type="text"
-        name="codigo"
-        value="<?= htmlspecialchars($_POST['codigo'] ?? $equipo['codigo'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-        required
-    >
+            <a href="listar.php" class="boton boton-secundario">
+                Volver a equipos
+            </a>
+        </header>
 
-    <br><br>
+        <section class="panel-modulo formulario-panel">
 
-    <label>Nombre:</label>
-    <input
-        type="text"
-        name="nombre"
-        value="<?= htmlspecialchars($_POST['nombre'] ?? $equipo['nombre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-        required
-    >
+            <div class="panel-titulo">
+                <h2>Información del equipo</h2>
+            </div>
 
-    <br><br>
+            <?php if ($mensaje !== ''): ?>
+                <div class="mensaje mensaje-error">
+                    <?= htmlspecialchars(
+                        $mensaje,
+                        ENT_QUOTES | ENT_SUBSTITUTE,
+                        'UTF-8'
+                    ) ?>
+                </div>
+            <?php endif; ?>
 
-    <label>Categoría:</label>
-    <select name="categoria_id" required>
-        <?php foreach ($categorias as $categoria): ?>
-            <option
-                value="<?= (int) $categoria['id'] ?>"
-                <?= (int) ($_POST['categoria_id'] ?? $equipo['categoria_id']) === (int) $categoria['id'] ? 'selected' : '' ?>
+            <form
+                method="POST"
+                action="editar.php?id=<?= (int) $id ?>"
+                enctype="multipart/form-data"
+                class="formulario-modulo"
             >
-                <?= htmlspecialchars($categoria['nombre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
 
-    <br><br>
+                <input
+                    type="hidden"
+                    name="id"
+                    value="<?= (int) $equipo['id'] ?>"
+                >
 
-    <label>Estado:</label>
-    <select name="estado" required>
-        <?php foreach ($estadosPermitidos as $estado): ?>
-            <option
-                value="<?= htmlspecialchars($estado, ENT_QUOTES, 'UTF-8') ?>"
-                <?= ($_POST['estado'] ?? $equipo['estado']) === $estado ? 'selected' : '' ?>
-            >
-                <?= htmlspecialchars($estado, ENT_QUOTES, 'UTF-8') ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= htmlspecialchars(
+                        $_SESSION['csrf_token'],
+                        ENT_QUOTES | ENT_SUBSTITUTE,
+                        'UTF-8'
+                    ) ?>"
+                >
 
-    <br><br>
+                <div class="campo-formulario">
+                    <label for="codigo">Código del equipo:</label>
 
-    <label>Imagen actual:</label>
-    <br>
+                    <input
+                        type="text"
+                        id="codigo"
+                        name="codigo"
+                        value="<?= htmlspecialchars(
+                            $codigoFormulario,
+                            ENT_QUOTES | ENT_SUBSTITUTE,
+                            'UTF-8'
+                        ) ?>"
+                        required
+                    >
+                </div>
 
-    <?php if (!empty($equipo['imagen_ruta'])): ?>
-        <img
-            src="/<?= htmlspecialchars($equipo['imagen_ruta'], ENT_QUOTES, 'UTF-8') ?>"
-            alt="Imagen del equipo"
-            width="150"
-        >
-    <?php else: ?>
-        <p>Este equipo no tiene imagen.</p>
-    <?php endif; ?>
+                <div class="campo-formulario">
+                    <label for="nombre">Nombre del equipo:</label>
 
-    <br><br>
+                    <input
+                        type="text"
+                        id="nombre"
+                        name="nombre"
+                        value="<?= htmlspecialchars(
+                            $nombreFormulario,
+                            ENT_QUOTES | ENT_SUBSTITUTE,
+                            'UTF-8'
+                        ) ?>"
+                        required
+                    >
+                </div>
 
-    <label>Seleccionar una imagen nueva (opcional):</label>
-    <input
-        type="file"
-        name="imagen"
-        accept=".jpg,.jpeg,.png,.webp"
-    >
+                <div class="campo-formulario">
+                    <label for="categoria_id">Categoría:</label>
 
-    <br><br>
+                    <select id="categoria_id" name="categoria_id" required>
 
-    <button type="submit">Guardar cambios</button>
+                        <?php foreach ($categorias as $categoria): ?>
 
-</form>
+                            <option
+                                value="<?= (int) $categoria['id'] ?>"
+                                <?= (int) $categoriaFormulario === (int) $categoria['id'] ? 'selected' : '' ?>
+                            >
+                                <?= htmlspecialchars(
+                                    $categoria['nombre'],
+                                    ENT_QUOTES | ENT_SUBSTITUTE,
+                                    'UTF-8'
+                                ) ?>
+                            </option>
 
-<br>
+                        <?php endforeach; ?>
 
-<a href="listar.php">Volver a la lista</a>
+                    </select>
+                </div>
+
+                <div class="campo-formulario">
+                    <label for="estado">Estado del equipo:</label>
+
+                    <select id="estado" name="estado" required>
+
+                        <?php foreach ($estadosPermitidos as $estadoOpcion): ?>
+
+                            <option
+                                value="<?= htmlspecialchars($estadoOpcion, ENT_QUOTES, 'UTF-8') ?>"
+                                <?= $estadoFormulario === $estadoOpcion ? 'selected' : '' ?>
+                            >
+                                <?= htmlspecialchars($estadoOpcion, ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+
+                        <?php endforeach; ?>
+
+                    </select>
+                </div>
+
+                <div class="campo-formulario">
+                    <label>Imagen actual:</label>
+
+                    <?php if ($rutaImagenMostrar !== null): ?>
+
+                        <div class="imagen-equipo-actual">
+                            <img
+                                src="<?= htmlspecialchars(
+                                    $rutaImagenMostrar,
+                                    ENT_QUOTES | ENT_SUBSTITUTE,
+                                    'UTF-8'
+                                ) ?>"
+                                alt="Imagen actual del equipo"
+                            >
+                        </div>
+
+                    <?php else: ?>
+
+                        <p class="texto-secundario">
+                            Este equipo todavía no tiene una imagen.
+                        </p>
+
+                    <?php endif; ?>
+                </div>
+
+                <div class="campo-formulario">
+                    <label for="imagen">Seleccionar una imagen nueva:</label>
+
+                    <input
+                        type="file"
+                        id="imagen"
+                        name="imagen"
+                        accept=".jpg,.jpeg,.png,.webp"
+                    >
+
+                    <small>
+                        Este campo es opcional. Si no seleccionas una imagen,
+                        se conservará la actual. Formatos JPG, PNG y WEBP,
+                        máximo 5 MB.
+                    </small>
+                </div>
+
+                <div class="acciones-formulario">
+
+                    <a href="listar.php" class="boton boton-secundario">
+                        Cancelar
+                    </a>
+
+                    <button type="submit" class="boton boton-principal">
+                        Guardar cambios
+                    </button>
+
+                </div>
+
+            </form>
+
+        </section>
+
+    </main>
+
+</body>
+</html>

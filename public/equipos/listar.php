@@ -96,158 +96,235 @@ $equipos = $consulta->fetchAll();
 
 ?>
 
-<h2>Lista de equipos</h2>
+<!DOCTYPE html>
+<html lang="es">
 
-<?php if (isset($_GET['creado'])): ?>
-    <p>Equipo registrado correctamente.</p>
-<?php endif; ?>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de equipos - SIGEL</title>
+    <link rel="stylesheet" href="/css/estilos.css">
+</head>
 
-<?php if (isset($_GET['actualizado'])): ?>
-    <p>Equipo actualizado correctamente.</p>
-<?php endif; ?>
+<body>
 
-<?php if (isset($_GET['eliminado'])): ?>
-    <p>Equipo eliminado correctamente.</p>
-<?php endif; ?>
+    <main class="contenedor contenedor-modulo">
 
-<!-- Formulario de búsqueda -->
-<form method="GET">
+        <header class="titulo-modulo">
+            <div>
+                <h1>Gestión de equipos</h1>
+                <p>Consulta y administra los equipos registrados en SIGEL.</p>
+            </div>
 
-    <input
-        type="text"
-        name="buscar"
-        placeholder="Buscar por nombre o código"
-        value="<?= htmlspecialchars($buscar, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-    >
+            <a href="../dashboard.php" class="boton boton-secundario">
+                Volver al inicio
+            </a>
+        </header>
 
-    <button type="submit">Buscar</button>
+        <?php if (isset($_GET['creado'])): ?>
+            <div class="mensaje mensaje-exito">
+                Equipo registrado correctamente.
+            </div>
+        <?php endif; ?>
 
-    <a href="listar.php">Limpiar búsqueda</a>
+        <?php if (isset($_GET['actualizado'])): ?>
+            <div class="mensaje mensaje-exito">
+                Equipo actualizado correctamente.
+            </div>
+        <?php endif; ?>
 
-</form>
+        <?php if (isset($_GET['eliminado'])): ?>
+            <div class="mensaje mensaje-exito">
+                Equipo eliminado correctamente.
+            </div>
+        <?php endif; ?>
 
-<br>
+        <section class="panel-modulo">
 
-<!-- Botón para registrar -->
-<?php if ($puedeCrear): ?>
-    <a href="crear.php">Registrar equipo</a>
-<?php endif; ?>
+            <div class="panel-titulo">
+                <h2>Equipos registrados</h2>
 
-<br><br>
+                <?php if ($puedeCrear): ?>
+                    <a href="crear.php" class="boton boton-principal">
+                        + Registrar equipo
+                    </a>
+                <?php endif; ?>
+            </div>
 
-<table border="1" cellpadding="8">
+            <form method="GET" action="listar.php" class="formulario-busqueda">
 
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Código</th>
-            <th>Nombre</th>
-            <th>Categoría</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
+                <input
+                    type="text"
+                    name="buscar"
+                    placeholder="Buscar por nombre o código..."
+                    value="<?= htmlspecialchars($buscar, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                >
 
-    <tbody>
+                <button type="submit" class="boton boton-principal">
+                    Buscar
+                </button>
 
-        <?php if (count($equipos) > 0): ?>
+                <a href="listar.php" class="boton boton-secundario">
+                    Limpiar
+                </a>
 
-            <?php foreach ($equipos as $equipo): ?>
+            </form>
 
-                <tr>
+            <div class="tabla-contenedor">
 
-                    <td><?= (int) $equipo['id'] ?></td>
+                <table class="tabla-estilizada">
 
-                    <td>
-                        <?= htmlspecialchars($equipo['codigo'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                    </td>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Categoría</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
 
-                    <td>
-                        <?= htmlspecialchars($equipo['nombre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                    </td>
+                    <tbody>
 
-                    <td>
-                        <?= htmlspecialchars($equipo['categoria'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                    </td>
+                        <?php if (count($equipos) > 0): ?>
 
-                    <td>
-                        <?= htmlspecialchars($equipo['estado'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                    </td>
+                            <?php foreach ($equipos as $equipo): ?>
 
-                    <td>
+                                <tr>
 
-                        <?php if ($puedeEditar): ?>
+                                    <td>
+                                        <?= (int) $equipo['id'] ?>
+                                    </td>
 
-                            <a href="editar.php?id=<?= (int) $equipo['id'] ?>">
-                                Editar
+                                    <td>
+                                        <?= htmlspecialchars($equipo['codigo'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                                    </td>
+
+                                    <td>
+                                        <?= htmlspecialchars($equipo['nombre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                                    </td>
+
+                                    <td>
+                                        <?= htmlspecialchars($equipo['categoria'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                                    </td>
+
+                                    <td>
+                                        <span class="estado estado-activo">
+                                            <?= htmlspecialchars($equipo['estado'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        <div class="acciones-tabla">
+
+                                            <?php if ($puedeEditar): ?>
+
+                                                <a
+                                                    href="editar.php?id=<?= (int) $equipo['id'] ?>"
+                                                    class="boton boton-pequeno boton-editar"
+                                                >
+                                                    Editar
+                                                </a>
+
+                                            <?php endif; ?>
+
+                                            <?php if ($puedeEliminar): ?>
+
+                                                <form
+                                                    method="POST"
+                                                    action="eliminar.php"
+                                                    class="formulario-accion"
+                                                    onsubmit="return confirm('¿Estás seguro de eliminar este equipo?');"
+                                                >
+
+                                                    <input
+                                                        type="hidden"
+                                                        name="id"
+                                                        value="<?= (int) $equipo['id'] ?>"
+                                                    >
+
+                                                    <input
+                                                        type="hidden"
+                                                        name="csrf_token"
+                                                        value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                                    >
+
+                                                    <button
+                                                        type="submit"
+                                                        class="boton boton-pequeno boton-desactivar"
+                                                    >
+                                                        Eliminar
+                                                    </button>
+
+                                                </form>
+
+                                            <?php endif; ?>
+
+                                        </div>
+                                    </td>
+
+                                </tr>
+
+                            <?php endforeach; ?>
+
+                        <?php else: ?>
+
+                            <tr>
+                                <td colspan="6" class="sin-resultados">
+                                    No se encontraron equipos.
+                                </td>
+                            </tr>
+
+                        <?php endif; ?>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <?php if ($totalPaginas > 0): ?>
+
+                <div class="paginacion">
+
+                    <p>
+                        Página <?= $pagina ?> de <?= $totalPaginas ?>
+                    </p>
+
+                    <div class="paginacion-botones">
+
+                        <?php if ($pagina > 1): ?>
+
+                            <a
+                                href="?pagina=<?= $pagina - 1 ?>&buscar=<?= urlencode($buscar) ?>"
+                                class="boton boton-secundario"
+                            >
+                                Anterior
                             </a>
 
                         <?php endif; ?>
 
-                        <?php if ($puedeEliminar): ?>
+                        <?php if ($pagina < $totalPaginas): ?>
 
-                            <form
-                                method="POST"
-                                action="eliminar.php"
-                                onsubmit="return confirm('¿Estás seguro de eliminar este equipo?');"
+                            <a
+                                href="?pagina=<?= $pagina + 1 ?>&buscar=<?= urlencode($buscar) ?>"
+                                class="boton boton-secundario"
                             >
-
-                                <input
-                                    type="hidden"
-                                    name="id"
-                                    value="<?= (int) $equipo['id'] ?>"
-                                >
-
-                                <input
-                                    type="hidden"
-                                    name="csrf_token"
-                                    value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                                >
-
-                                <button type="submit">
-                                    Eliminar
-                                </button>
-
-                            </form>
+                                Siguiente
+                            </a>
 
                         <?php endif; ?>
 
-                    </td>
+                    </div>
 
-                </tr>
+                </div>
 
-            <?php endforeach; ?>
+            <?php endif; ?>
 
-        <?php else: ?>
+        </section>
 
-            <tr>
-                <td colspan="6">
-                    No se encontraron equipos.
-                </td>
-            </tr>
+    </main>
 
-        <?php endif; ?>
-
-    </tbody>
-
-</table>
-
-<br>
-
-<!-- Navegación de páginas -->
-<?php if ($totalPaginas > 1): ?>
-
-    <?php for ($i = 1; $i <= $totalPaginas; $i++): ?>
-
-        <a href="?pagina=<?= $i ?>&buscar=<?= urlencode($buscar) ?>">
-            <?= $i ?>
-        </a>
-
-    <?php endfor; ?>
-
-<?php endif; ?>
-
-<br><br>
-
-<a href="../dashboard.php">Volver al inicio</a>
-
+</body>
+</html>
