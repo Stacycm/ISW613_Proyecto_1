@@ -1,4 +1,3 @@
-
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
@@ -124,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } catch (Throwable $e) {
 
-        // Deshacer los cambios si ocurre un error
+        // Deshacer los cambios si ocurrió un error
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
@@ -173,79 +172,113 @@ if (empty($_SESSION['csrf_token'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editar usuario | SIGEL</title>
+    <link rel="stylesheet" href="/css/estilos.css">
 </head>
 
 <body>
 
-    <h1>Editar usuario</h1>
+    <header class="encabezado">
+        <div class="encabezado-contenido">
+            <div>
+                <h1>SIGEL</h1>
+                <p>Sistema de Gestión de Equipos y Laboratorios</p>
+            </div>
 
-    <form method="POST" action="editar.php">
+            <a href="/dashboard.php" class="boton boton-secundario">
+                Volver al inicio
+            </a>
+        </div>
+    </header>
 
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>"
-        >
+    <main class="contenedor contenedor-modulo">
 
-        <input
-            type="hidden"
-            name="id"
-            value="<?= (int) $usuario['id'] ?>"
-        >
+        <section class="titulo-modulo">
+            <div>
+                <h2>Editar usuario</h2>
+                <p>Modifica la información del usuario seleccionado.</p>
+            </div>
+        </section>
 
-        <label for="nombre">Nombre:</label>
-        <br>
+        <section class="panel-modulo formulario-panel">
 
-        <input
-            type="text"
-            id="nombre"
-            name="nombre"
-            value="<?= htmlspecialchars($usuario['nombre'], ENT_QUOTES, 'UTF-8') ?>"
-            required
-        >
+            <div class="panel-titulo">
+                <h3>Información del usuario</h3>
+                <p>Actualiza los datos que necesites modificar.</p>
+            </div>
 
-        <br><br>
+            <form method="POST" action="editar.php" class="formulario-modulo">
 
-        <label for="correo">Correo:</label>
-        <br>
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>"
+                >
 
-        <input
-            type="email"
-            id="correo"
-            name="correo"
-            value="<?= htmlspecialchars($usuario['correo'], ENT_QUOTES, 'UTF-8') ?>"
-            required
-        >
+                <input
+                    type="hidden"
+                    name="id"
+                    value="<?= (int) $usuario['id'] ?>"
+                >
 
-        <br><br>
+                <div class="campo-formulario">
+                    <label for="nombre">Nombre completo</label>
 
-        <label for="rol_id">Rol:</label>
-        <br>
+                    <input
+                        type="text"
+                        id="nombre"
+                        name="nombre"
+                        value="<?= htmlspecialchars($usuario['nombre'], ENT_QUOTES, 'UTF-8') ?>"
+                        required
+                    >
+                </div>
 
-        <select id="rol_id" name="rol_id" required>
+                <div class="campo-formulario">
+                    <label for="correo">Correo electrónico</label>
 
-            <option value="1"
-                <?= $usuario['rol_id'] == 1 ? 'selected' : '' ?>>
-                Administrador
-            </option>
+                    <input
+                        type="email"
+                        id="correo"
+                        name="correo"
+                        value="<?= htmlspecialchars($usuario['correo'], ENT_QUOTES, 'UTF-8') ?>"
+                        required
+                    >
+                </div>
 
-            <option value="2"
-                <?= $usuario['rol_id'] == 2 ? 'selected' : '' ?>>
-                Operador
-            </option>
+                <div class="campo-formulario">
+                    <label for="rol_id">Rol del usuario</label>
 
-        </select>
+                    <select id="rol_id" name="rol_id" required>
 
-        <br><br>
+                        <option value="1"
+                            <?= $usuario['rol_id'] == 1 ? 'selected' : '' ?>>
+                            Administrador
+                        </option>
 
-        <button type="submit">Guardar cambios</button>
+                        <option value="2"
+                            <?= $usuario['rol_id'] == 2 ? 'selected' : '' ?>>
+                            Operador
+                        </option>
 
-    </form>
+                    </select>
+                </div>
 
-    <br>
+                <div class="acciones-formulario">
 
-    <a href="listar.php">Volver a usuarios</a>
+                    <button type="submit" class="boton boton-principal">
+                        Guardar cambios
+                    </button>
+
+                    <a href="listar.php" class="boton boton-secundario">
+                        Cancelar
+                    </a>
+
+                </div>
+
+            </form>
+
+        </section>
+
+    </main>
 
 </body>
-
 </html>

@@ -1,4 +1,3 @@
-
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
@@ -40,6 +39,9 @@ if ($id <= 0) {
 if ($id === (int) $_SESSION['id']) {
     exit('No puedes desactivar tu propia cuenta.');
 }
+
+// Inicializar la conexión
+$pdo = null;
 
 try {
 
@@ -120,7 +122,7 @@ try {
 } catch (Throwable $e) {
 
     // Deshacer los cambios si ocurrió un error
-    if ($pdo->inTransaction()) {
+    if ($pdo instanceof PDO && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
 

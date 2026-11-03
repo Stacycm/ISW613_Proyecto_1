@@ -101,178 +101,235 @@ $usuarios = $consulta->fetchAll();
 
 <head>
     <meta charset="UTF-8">
-    <title>Lista de usuarios - SIGEL</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de usuarios | SIGEL</title>
+    <link rel="stylesheet" href="/css/estilos.css">
 </head>
 
 <body>
 
-    <h1>Gestión de usuarios</h1>
+    <header class="encabezado">
+        <div class="encabezado-contenido">
+            <div>
+                <h1>SIGEL</h1>
+                <p>Sistema de Gestión de Equipos y Laboratorios</p>
+            </div>
 
-    <p>Bienvenido, <?= htmlspecialchars($_SESSION['nombre']) ?></p>
+            <a href="/dashboard.php" class="boton boton-secundario">
+                Volver al inicio
+            </a>
+        </div>
+    </header>
 
-    <a href="../dashboard.php">Volver al inicio</a>
+    <main class="contenedor contenedor-modulo">
 
-    <hr>
+        <section class="titulo-modulo">
+            <div>
+                <h2>Gestión de usuarios</h2>
+                <p>Bienvenido, <?= htmlspecialchars($_SESSION['nombre'], ENT_QUOTES, 'UTF-8') ?>.</p>
+            </div>
 
-    <?php if (isset($_GET['creado'])): ?>
-        <p>Usuario registrado correctamente.</p>
-    <?php endif; ?>
-
-    <?php if (isset($_GET['actualizado'])): ?>
-        <p>Usuario actualizado correctamente.</p>
-    <?php endif; ?>
-
-    <?php if (isset($_GET['desactivado'])): ?>
-        <p>Usuario desactivado correctamente.</p>
-    <?php endif; ?>
-
-    <h2>Usuarios registrados</h2>
-
-    <?php if ($puedeCrear): ?>
-        <a href="crear.php">Registrar nuevo usuario</a>
-    <?php endif; ?>
-
-    <br><br>
-
-    <!-- Formulario de búsqueda -->
-    <form method="GET" action="listar.php">
-
-        <input
-            type="text"
-            name="buscar"
-            placeholder="Buscar por nombre o correo"
-            value="<?= htmlspecialchars($buscar) ?>"
-        >
-
-        <button type="submit">Buscar</button>
-
-        <a href="listar.php">Limpiar búsqueda</a>
-
-    </form>
-
-    <br>
-
-    <!-- Tabla de usuarios -->
-    <table border="1" cellpadding="8">
-
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Correo</th>
-                <th>Rol</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-
-        <tbody>
-
-            <?php if (count($usuarios) > 0): ?>
-
-                <?php foreach ($usuarios as $usuario): ?>
-
-                    <tr>
-
-                        <td><?= htmlspecialchars((string) $usuario['id']) ?></td>
-
-                        <td><?= htmlspecialchars($usuario['nombre']) ?></td>
-
-                        <td><?= htmlspecialchars($usuario['correo']) ?></td>
-
-                        <td><?= htmlspecialchars($usuario['rol']) ?></td>
-
-                        <td>
-                            <?php if ($usuario['activo'] == 1): ?>
-                                Activo
-                            <?php else: ?>
-                                Inactivo
-                            <?php endif; ?>
-                        </td>
-
-                        <td>
-
-                            <!-- Botón editar -->
-                            <?php if ($puedeEditar): ?>
-
-                                <a href="editar.php?id=<?= $usuario['id'] ?>">
-                                    Editar
-                                </a>
-
-                            <?php endif; ?>
-
-
-                            <!-- Botón desactivar -->
-                            <?php if ($puedeDesactivar && $usuario['activo'] == 1): ?>
-
-                                <form
-                                    method="POST"
-                                    action="desactivar.php"
-                                    onsubmit="return confirm('¿Deseas desactivar este usuario?');"
-                                >
-
-                                    <input
-                                        type="hidden"
-                                        name="id"
-                                        value="<?= $usuario['id'] ?>"
-                                    >
-
-                                    <input
-                                        type="hidden"
-                                        name="csrf_token"
-                                        value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>"
-                                    >
-
-                                    <button type="submit">
-                                        Desactivar
-                                    </button>
-
-                                </form>
-
-                            <?php endif; ?>
-
-                        </td>
-
-                    </tr>
-
-                <?php endforeach; ?>
-
-            <?php else: ?>
-
-                <tr>
-                    <td colspan="6">No se encontraron usuarios.</td>
-                </tr>
-
+            <?php if ($puedeCrear): ?>
+                <a href="crear.php" class="boton boton-principal">
+                    + Registrar usuario
+                </a>
             <?php endif; ?>
+        </section>
 
-        </tbody>
+        <?php if (isset($_GET['creado'])): ?>
+            <p class="mensaje mensaje-exito">
+                Usuario registrado correctamente.
+            </p>
+        <?php endif; ?>
 
-    </table>
+        <?php if (isset($_GET['actualizado'])): ?>
+            <p class="mensaje mensaje-exito">
+                Usuario actualizado correctamente.
+            </p>
+        <?php endif; ?>
 
-    <br>
+        <?php if (isset($_GET['desactivado'])): ?>
+            <p class="mensaje mensaje-exito">
+                Usuario desactivado correctamente.
+            </p>
+        <?php endif; ?>
 
-    <!-- Paginación -->
-    <p>
-        Página <?= $pagina ?> de <?= $totalPaginas ?>
-    </p>
+        <section class="panel-modulo">
 
-    <?php if ($pagina > 1): ?>
+            <div class="panel-titulo">
+                <div>
+                    <h3>Usuarios registrados</h3>
+                    <p>Consulta y administra los usuarios del sistema.</p>
+                </div>
+            </div>
 
-        <a href="?pagina=<?= $pagina - 1 ?>&buscar=<?= urlencode($buscar) ?>">
-            Anterior
-        </a>
+            <form method="GET" action="listar.php" class="formulario-busqueda">
 
-    <?php endif; ?>
+                <input
+                    type="text"
+                    name="buscar"
+                    placeholder="Buscar por nombre o correo..."
+                    value="<?= htmlspecialchars($buscar, ENT_QUOTES, 'UTF-8') ?>"
+                >
 
-    <?php if ($pagina < $totalPaginas): ?>
+                <button type="submit" class="boton boton-principal">
+                    Buscar
+                </button>
 
-        <a href="?pagina=<?= $pagina + 1 ?>&buscar=<?= urlencode($buscar) ?>">
-            Siguiente
-        </a>
+                <a href="listar.php" class="boton boton-secundario">
+                    Limpiar
+                </a>
 
-    <?php endif; ?>
+            </form>
+
+            <div class="tabla-contenedor">
+
+                <table class="tabla-estilizada">
+
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Correo</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        <?php if (count($usuarios) > 0): ?>
+
+                            <?php foreach ($usuarios as $usuario): ?>
+
+                                <tr>
+
+                                    <td>
+                                        <?= htmlspecialchars((string) $usuario['id'], ENT_QUOTES, 'UTF-8') ?>
+                                    </td>
+
+                                    <td>
+                                        <?= htmlspecialchars($usuario['nombre'], ENT_QUOTES, 'UTF-8') ?>
+                                    </td>
+
+                                    <td>
+                                        <?= htmlspecialchars($usuario['correo'], ENT_QUOTES, 'UTF-8') ?>
+                                    </td>
+
+                                    <td>
+                                        <?= htmlspecialchars($usuario['rol'], ENT_QUOTES, 'UTF-8') ?>
+                                    </td>
+
+                                    <td>
+                                        <?php if ($usuario['activo'] == 1): ?>
+                                            <span class="estado estado-activo">Activo</span>
+                                        <?php else: ?>
+                                            <span class="estado estado-inactivo">Inactivo</span>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <td class="acciones-tabla">
+
+                                        <?php if ($puedeEditar): ?>
+
+                                            <a
+                                                href="editar.php?id=<?= (int) $usuario['id'] ?>"
+                                                class="boton boton-pequeno boton-editar"
+                                            >
+                                                Editar
+                                            </a>
+
+                                        <?php endif; ?>
+
+                                        <?php if ($puedeDesactivar && $usuario['activo'] == 1): ?>
+
+                                            <form
+                                                method="POST"
+                                                action="desactivar.php"
+                                                class="formulario-accion"
+                                                onsubmit="return confirm('¿Deseas desactivar este usuario?');"
+                                            >
+
+                                                <input
+                                                    type="hidden"
+                                                    name="id"
+                                                    value="<?= (int) $usuario['id'] ?>"
+                                                >
+
+                                                <input
+                                                    type="hidden"
+                                                    name="csrf_token"
+                                                    value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>"
+                                                >
+
+                                                <button type="submit" class="boton boton-pequeno boton-desactivar">
+                                                    Desactivar
+                                                </button>
+
+                                            </form>
+
+                                        <?php endif; ?>
+
+                                    </td>
+
+                                </tr>
+
+                            <?php endforeach; ?>
+
+                        <?php else: ?>
+
+                            <tr>
+                                <td colspan="6" class="sin-resultados">
+                                    No se encontraron usuarios.
+                                </td>
+                            </tr>
+
+                        <?php endif; ?>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <div class="paginacion">
+
+                <p>
+                    Página <?= $pagina ?> de <?= $totalPaginas ?>
+                </p>
+
+                <div class="paginacion-botones">
+
+                    <?php if ($pagina > 1): ?>
+
+                        <a
+                            href="?pagina=<?= $pagina - 1 ?>&buscar=<?= urlencode($buscar) ?>"
+                            class="boton boton-secundario"
+                        >
+                            Anterior
+                        </a>
+
+                    <?php endif; ?>
+
+                    <?php if ($pagina < $totalPaginas): ?>
+
+                        <a
+                            href="?pagina=<?= $pagina + 1 ?>&buscar=<?= urlencode($buscar) ?>"
+                            class="boton boton-secundario"
+                        >
+                            Siguiente
+                        </a>
+
+                    <?php endif; ?>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
 
 </body>
 </html>
-
-

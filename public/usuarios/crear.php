@@ -16,7 +16,6 @@ if (!tienePermiso('usuario_crear')) {
 $pdo = require __DIR__ . '/../../app/config/config.php';
 
 // Variables para mensajes
-$mensaje = '';
 $error = '';
 
 // Si se envió el formulario
@@ -134,89 +133,133 @@ if (empty($_SESSION['csrf_token'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear usuario | SIGEL</title>
+    <title>Registrar usuario | SIGEL</title>
+    <link rel="stylesheet" href="/css/estilos.css">
 </head>
 
 <body>
 
-    <h1>Registrar usuario</h1>
+    <header class="encabezado">
+        <div class="encabezado-contenido">
+            <div>
+                <h1>SIGEL</h1>
+                <p>Sistema de Gestión de Equipos y Laboratorios</p>
+            </div>
 
-    <?php if ($error !== ''): ?>
-        <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
-    <?php endif; ?>
+            <a href="/dashboard.php" class="boton boton-secundario">
+                Volver al inicio
+            </a>
+        </div>
+    </header>
 
-    <form method="POST" action="crear.php">
+    <main class="contenedor contenedor-modulo">
 
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>"
-        >
+        <section class="titulo-modulo">
+            <div>
+                <h2>Registrar usuario</h2>
+                <p>Completa los datos para agregar un nuevo usuario al sistema.</p>
+            </div>
+        </section>
 
-        <label for="nombre">Nombre:</label>
-        <br>
+        <section class="panel-modulo formulario-panel">
 
-        <input
-            type="text"
-            id="nombre"
-            name="nombre"
-            value="<?= htmlspecialchars($_POST['nombre'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-            required
-        >
+            <div class="panel-titulo">
+                <h3>Información del usuario</h3>
+                <p>Los campos marcados son obligatorios.</p>
+            </div>
 
-        <br><br>
+            <?php if ($error !== ''): ?>
+                <p class="mensaje mensaje-error">
+                    <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
+                </p>
+            <?php endif; ?>
 
-        <label for="correo">Correo electrónico:</label>
-        <br>
+            <form method="POST" action="crear.php" class="formulario-modulo">
 
-        <input
-            type="email"
-            id="correo"
-            name="correo"
-            value="<?= htmlspecialchars($_POST['correo'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-            required
-        >
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>"
+                >
 
-        <br><br>
+                <div class="campo-formulario">
+                    <label for="nombre">Nombre completo</label>
 
-        <label for="password">Contraseña:</label>
-        <br>
+                    <input
+                        type="text"
+                        id="nombre"
+                        name="nombre"
+                        placeholder="Ingrese el nombre completo"
+                        value="<?= htmlspecialchars($_POST['nombre'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                        required
+                    >
+                </div>
 
-        <input
-            type="password"
-            id="password"
-            name="password"
-            minlength="8"
-            required
-        >
+                <div class="campo-formulario">
+                    <label for="correo">Correo electrónico</label>
 
-        <br><br>
+                    <input
+                        type="email"
+                        id="correo"
+                        name="correo"
+                        placeholder="ejemplo@correo.com"
+                        value="<?= htmlspecialchars($_POST['correo'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                        required
+                    >
+                </div>
 
-        <label for="rol_id">Rol:</label>
-        <br>
+                <div class="campo-formulario">
+                    <label for="password">Contraseña</label>
 
-        <select id="rol_id" name="rol_id" required>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Mínimo 8 caracteres"
+                        minlength="8"
+                        required
+                    >
 
-            <option value="">Seleccione un rol</option>
+                    <small>La contraseña debe tener al menos 8 caracteres.</small>
+                </div>
 
-            <option value="1">Administrador</option>
+                <div class="campo-formulario">
+                    <label for="rol_id">Rol del usuario</label>
 
-            <option value="2">Operador</option>
+                    <select id="rol_id" name="rol_id" required>
 
-        </select>
+                        <option value="">Seleccione un rol</option>
 
-        <br><br>
+                        <option value="1"
+                            <?= (($_POST['rol_id'] ?? '') === '1') ? 'selected' : '' ?>>
+                            Administrador
+                        </option>
 
-        <button type="submit">Registrar usuario</button>
+                        <option value="2"
+                            <?= (($_POST['rol_id'] ?? '') === '2') ? 'selected' : '' ?>>
+                            Operador
+                        </option>
 
-    </form>
+                    </select>
+                </div>
 
-    <br>
+                <div class="acciones-formulario">
 
-    <a href="listar.php">Volver a usuarios</a>
+                    <button type="submit" class="boton boton-principal">
+                        Registrar usuario
+                    </button>
+
+                    <a href="listar.php" class="boton boton-secundario">
+                        Cancelar
+                    </a>
+
+                </div>
+
+            </form>
+
+        </section>
+
+    </main>
 
 </body>
-
 </html>
-
-
