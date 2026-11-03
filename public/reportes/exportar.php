@@ -1,15 +1,16 @@
 <?php
 
 require_once __DIR__ . '/../../app/includes/auth.php';
+
 requiereLogin();
 
-// Verificar permiso
+// Verificar permiso para exportar reportes
 if (!tienePermiso('reporte_exportar')) {
     http_response_code(403);
     exit('No tienes permiso para exportar reportes.');
 }
 
-// Conexión
+// Conexión a la base de datos
 $pdo = require __DIR__ . '/../../app/config/config.php';
 
 // Recibir fechas
@@ -20,12 +21,30 @@ $fechaFin = $_GET['fecha_fin'] ?? '';
 $inicio = DateTime::createFromFormat('!Y-m-d', $fechaInicio);
 $fin = DateTime::createFromFormat('!Y-m-d', $fechaFin);
 
-$inicioValido = $inicio && $inicio->format('Y-m-d') === $fechaInicio;
-$finValido = $fin && $fin->format('Y-m-d') === $fechaFin;
+$inicioValido = $inicio
+    && $inicio->format('Y-m-d') === $fechaInicio;
+
+$finValido = $fin
+    && $fin->format('Y-m-d') === $fechaFin;
 
 if (!$inicioValido || !$finValido || $fechaInicio > $fechaFin) {
+
     http_response_code(400);
     exit('El rango de fechas no es válido.');
+
+}
+
+// Función para proteger los datos del CSV
+function protegerCSV($valor): string
+{
+    $valor = (string) $valor;
+
+    // Evitar que Excel interprete el contenido como fórmula
+    if (preg_match('/^[\s]*[=+\-@]/u', $valor)) {
+        return "'" . $valor;
+    }
+
+    return $valor;
 }
 
 // Consultar equipos más prestados
@@ -92,16 +111,18 @@ fputcsv($salida, [
     'Total de prestamos'
 ], ';');
 
-// Datos
+// Datos del reporte
 foreach ($resultados as $equipo) {
 
     fputcsv($salida, [
-        $equipo['codigo'],
-        $equipo['nombre'],
+        protegerCSV($equipo['codigo']),
+        protegerCSV($equipo['nombre']),
         (int) $equipo['total_prestamos']
     ], ';');
 
 }
 
 fclose($salida);
+
 exit;
+
