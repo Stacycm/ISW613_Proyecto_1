@@ -140,265 +140,211 @@ function mostrarJson(?string $json): string
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Bitácora - SIGEL</title>
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            margin: 0;
-            padding: 25px;
-            color: #333;
-        }
-
-        .contenedor {
-            max-width: 1200px;
-            margin: auto;
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-        }
-
-        h1 {
-            color: #24476b;
-        }
-
-        .filtros {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-
-        input, select, button {
-            padding: 9px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-
-        button {
-            background: #24476b;
-            color: white;
-            cursor: pointer;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
-            vertical-align: top;
-        }
-
-        th {
-            background: #24476b;
-            color: white;
-        }
-
-        tr:nth-child(even) {
-            background: #f7f9fc;
-        }
-
-        pre {
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
-            max-width: 250px;
-            font-size: 12px;
-        }
-
-        .paginacion {
-            margin-top: 20px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .paginacion a, .volver {
-            color: #24476b;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .volver {
-            display: inline-block;
-            margin-bottom: 15px;
-        }
-
-        .sin-registros {
-            text-align: center;
-            padding: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/estilos.css">
 </head>
 
 <body>
 
-<div class="contenedor">
+<main class="contenedor contenedor-modulo">
 
-    <a class="volver" href="/dashboard.php">
-        ← Volver al dashboard
-    </a>
+    <header class="titulo-modulo">
+        <div>
+            <h1>Bitácora del sistema</h1>
+            <p>
+                Consulta las acciones realizadas por los usuarios
+                dentro de SIGEL.
+            </p>
+        </div>
 
-    <h1>Bitácora del sistema</h1>
+        <a href="/dashboard.php" class="boton boton-secundario">
+            Volver al dashboard
+        </a>
+    </header>
 
-    <p>
-        Aquí puedes consultar las acciones realizadas por los usuarios
-        dentro de SIGEL.
-    </p>
+    <section class="panel-modulo">
 
-    <!-- Filtros -->
-    <form method="GET" class="filtros">
+        <div class="panel-titulo">
+            <h2>Filtros de búsqueda</h2>
+        </div>
 
-        <input
-            type="text"
-            name="buscar"
-            placeholder="Buscar usuario, entidad o ID"
-            value="<?= escapar($buscar) ?>"
-        >
+        <form method="GET" class="filtros-bitacora">
 
-        <select name="accion">
-            <option value="">Todas las acciones</option>
+            <input
+                type="text"
+                name="buscar"
+                placeholder="Buscar usuario, entidad o ID"
+                value="<?= escapar($buscar) ?>"
+            >
 
-            <?php
-            $acciones = [
-                'CREAR',
-                'EDITAR',
-                'DESACTIVAR',
-                'ELIMINAR',
-                'APROBAR',
-                'CANCELAR',
-                'ENTREGAR',
-                'DEVOLVER'
-            ];
+            <select name="accion">
 
-            foreach ($acciones as $opcion):
-            ?>
+                <option value="">Todas las acciones</option>
 
-                <option
-                    value="<?= escapar($opcion) ?>"
-                    <?= $accion === $opcion ? 'selected' : '' ?>
-                >
-                    <?= escapar($opcion) ?>
-                </option>
+                <?php
+                $acciones = [
+                    'CREAR',
+                    'EDITAR',
+                    'DESACTIVAR',
+                    'ELIMINAR',
+                    'APROBAR',
+                    'CANCELAR',
+                    'ENTREGAR',
+                    'DEVOLVER'
+                ];
 
-            <?php endforeach; ?>
+                foreach ($acciones as $opcion):
+                ?>
 
-        </select>
-
-        <button type="submit">Buscar</button>
-
-        <a href="listar.php">Limpiar filtros</a>
-
-    </form>
-
-    <p>
-        Total de registros: <strong><?= $totalRegistros ?></strong>
-    </p>
-
-    <!-- Tabla -->
-    <table>
-
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Usuario</th>
-                <th>Acción</th>
-                <th>Entidad</th>
-                <th>ID afectado</th>
-                <th>Fecha</th>
-                <th>IP</th>
-                <th>Valores anteriores</th>
-                <th>Valores nuevos</th>
-            </tr>
-        </thead>
-
-        <tbody>
-
-            <?php if (empty($registros)): ?>
-
-                <tr>
-                    <td colspan="9" class="sin-registros">
-                        No se encontraron registros.
-                    </td>
-                </tr>
-
-            <?php else: ?>
-
-                <?php foreach ($registros as $registro): ?>
-
-                    <tr>
-
-                        <td><?= escapar($registro['id']) ?></td>
-
-                        <td>
-                            <?= escapar(
-                                $registro['usuario'] ?? 'Usuario no disponible'
-                            ) ?>
-                        </td>
-
-                        <td><?= escapar($registro['accion']) ?></td>
-
-                        <td><?= escapar($registro['entidad']) ?></td>
-
-                        <td><?= escapar($registro['entidad_id']) ?></td>
-
-                        <td><?= escapar($registro['creado_en']) ?></td>
-
-                        <td><?= escapar($registro['ip']) ?></td>
-
-                        <td>
-                            <pre><?= escapar(
-                                mostrarJson($registro['valores_antes'])
-                            ) ?></pre>
-                        </td>
-
-                        <td>
-                            <pre><?= escapar(
-                                mostrarJson($registro['valores_despues'])
-                            ) ?></pre>
-                        </td>
-
-                    </tr>
+                    <option
+                        value="<?= escapar($opcion) ?>"
+                        <?= $accion === $opcion ? 'selected' : '' ?>
+                    >
+                        <?= escapar($opcion) ?>
+                    </option>
 
                 <?php endforeach; ?>
 
+            </select>
+
+            <button type="submit" class="boton boton-principal">
+                Buscar
+            </button>
+
+            <a href="listar.php" class="boton boton-secundario">
+                Limpiar filtros
+            </a>
+
+        </form>
+
+    </section>
+
+    <section class="panel-modulo">
+
+        <div class="panel-titulo">
+            <h2>Registros de actividad</h2>
+        </div>
+
+        <p class="contador-resultados">
+            Total de registros:
+            <strong><?= $totalRegistros ?></strong>
+        </p>
+
+        <div class="tabla-contenedor tabla-bitacora">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuario</th>
+                        <th>Acción</th>
+                        <th>Entidad</th>
+                        <th>ID afectado</th>
+                        <th>Fecha</th>
+                        <th>IP</th>
+                        <th>Valores anteriores</th>
+                        <th>Valores nuevos</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <?php if (empty($registros)): ?>
+
+                        <tr>
+                            <td colspan="9" class="sin-registros">
+                                No se encontraron registros.
+                            </td>
+                        </tr>
+
+                    <?php else: ?>
+
+                        <?php foreach ($registros as $registro): ?>
+
+                            <tr>
+
+                                <td><?= escapar($registro['id']) ?></td>
+
+                                <td>
+                                    <?= escapar(
+                                        $registro['usuario'] ?? 'Usuario no disponible'
+                                    ) ?>
+                                </td>
+
+                                <td>
+                                    <span class="etiqueta-accion">
+                                        <?= escapar($registro['accion']) ?>
+                                    </span>
+                                </td>
+
+                                <td><?= escapar($registro['entidad']) ?></td>
+
+                                <td><?= escapar($registro['entidad_id']) ?></td>
+
+                                <td><?= escapar($registro['creado_en']) ?></td>
+
+                                <td><?= escapar($registro['ip']) ?></td>
+
+                                <td>
+                                    <pre><?= escapar(
+                                        mostrarJson($registro['valores_antes'])
+                                    ) ?></pre>
+                                </td>
+
+                                <td>
+                                    <pre><?= escapar(
+                                        mostrarJson($registro['valores_despues'])
+                                    ) ?></pre>
+                                </td>
+
+                            </tr>
+
+                        <?php endforeach; ?>
+
+                    <?php endif; ?>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <div class="paginacion">
+
+            <?php if ($pagina > 1): ?>
+
+                <a
+                    class="boton boton-secundario"
+                    href="?pagina=<?= $pagina - 1 ?>&buscar=<?= urlencode($buscar) ?>&accion=<?= urlencode($accion) ?>"
+                >
+                    ← Anterior
+                </a>
+
             <?php endif; ?>
 
-        </tbody>
+            <span>
+                Página <?= $pagina ?> de <?= $totalPaginas ?>
+            </span>
 
-    </table>
+            <?php if ($pagina < $totalPaginas): ?>
 
-    <!-- Paginación -->
-    <div class="paginacion">
+                <a
+                    class="boton boton-secundario"
+                    href="?pagina=<?= $pagina + 1 ?>&buscar=<?= urlencode($buscar) ?>&accion=<?= urlencode($accion) ?>"
+                >
+                    Siguiente →
+                </a>
 
-        <?php if ($pagina > 1): ?>
+            <?php endif; ?>
 
-            <a href="?pagina=<?= $pagina - 1 ?>&buscar=<?= urlencode($buscar) ?>&accion=<?= urlencode($accion) ?>">
-                ← Anterior
-            </a>
+        </div>
 
-        <?php endif; ?>
+    </section>
 
-        <span>
-            Página <?= $pagina ?> de <?= $totalPaginas ?>
-        </span>
-
-        <?php if ($pagina < $totalPaginas): ?>
-
-            <a href="?pagina=<?= $pagina + 1 ?>&buscar=<?= urlencode($buscar) ?>&accion=<?= urlencode($accion) ?>">
-                Siguiente →
-            </a>
-
-        <?php endif; ?>
-
-    </div>
-
-</div>
+</main>
 
 </body>
 </html>
