@@ -2,7 +2,13 @@
 
 require_once __DIR__ . '/../app/includes/auth.php';
 
-// Crear un token de seguridad para el formulario
+// Si ya inició sesión, enviarlo al dashboard.
+if (isset($_SESSION['id'])) {
+    header('Location: /dashboard.php');
+    exit;
+}
+
+// Crear token CSRF.
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -11,11 +17,13 @@ if (empty($_SESSION['csrf_token'])) {
 
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar sesión | SIGEL</title>
 </head>
+
 <body>
 
     <h1>SIGEL</h1>
@@ -25,7 +33,7 @@ if (empty($_SESSION['csrf_token'])) {
         <p>Correo o contraseña incorrectos.</p>
     <?php endif; ?>
 
-    <form action="procesar_login.php" method="POST">
+    <form action="/procesar_login.php" method="POST">
 
         <input
             type="hidden"
@@ -38,6 +46,7 @@ if (empty($_SESSION['csrf_token'])) {
         >
 
         <label for="correo">Correo electrónico:</label>
+
         <input
             type="email"
             id="correo"
@@ -48,6 +57,7 @@ if (empty($_SESSION['csrf_token'])) {
         <br><br>
 
         <label for="password">Contraseña:</label>
+
         <input
             type="password"
             id="password"
