@@ -4,22 +4,32 @@ require_once __DIR__ . '/../app/includes/auth.php';
 
 requiereLogin();
 
-// Obtener datos de sesión.
+// Obtener datos de sesión
 $nombre = $_SESSION['nombre'];
 $rol_id = (int) $_SESSION['rol_id'];
 
-// Crear token CSRF para cerrar sesión.
+// Crear token CSRF para cerrar sesión
 if (empty($_SESSION['csrf_token_logout'])) {
     $_SESSION['csrf_token_logout'] = bin2hex(random_bytes(32));
 }
 
-// Identificar rol.
+// Identificar rol
 if ($rol_id === 1) {
     $rol = 'Administrador';
 } elseif ($rol_id === 2) {
     $rol = 'Operador';
 } else {
     $rol = 'Rol desconocido';
+}
+
+// Función para escapar texto
+function escapar($valor): string
+{
+    return htmlspecialchars(
+        (string) $valor,
+        ENT_QUOTES | ENT_SUBSTITUTE,
+        'UTF-8'
+    );
 }
 
 ?>
@@ -31,107 +41,156 @@ if ($rol_id === 1) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Dashboard | SIGEL</title>
+    <link rel="stylesheet" href="/css/estilos.css">
+
+    <title>Panel principal | SIGEL</title>
 </head>
 
 <body>
 
-    <h1>SIGEL</h1>
+    <header class="encabezado">
+        <div class="encabezado-contenido">
+            <h1>SIGEL</h1>
+            <p>Sistema de Gestión de Equipos y Préstamos</p>
+        </div>
 
-    <h2>Panel principal</h2>
+        <form action="/logout.php" method="POST">
 
-    <p>
-        Bienvenido,
-        <strong>
-            <?= htmlspecialchars(
-                $nombre,
-                ENT_QUOTES | ENT_SUBSTITUTE,
-                'UTF-8'
-            ) ?>
-        </strong>
-    </p>
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= escapar($_SESSION['csrf_token_logout']) ?>"
+            >
 
-    <p>
-        Rol:
-        <strong>
-            <?= htmlspecialchars(
-                $rol,
-                ENT_QUOTES | ENT_SUBSTITUTE,
-                'UTF-8'
-            ) ?>
-        </strong>
-    </p>
+            <button type="submit" class="boton-salir">
+                Cerrar sesión
+            </button>
 
-    <hr>
+        </form>
+    </header>
 
-    <?php if ($rol_id === 1): ?>
+    <main class="contenedor-dashboard">
 
-        <h3>Administración</h3>
+        <section class="bienvenida">
 
-        <ul>
+            <div>
+                <h2>¡Bienvenido, <?= escapar($nombre) ?>!</h2>
 
-            <?php if (tienePermiso('usuario_consultar')): ?>
-                <li><a href="/usuarios/listar.php">Usuarios</a></li>
-            <?php endif; ?>
+                <p>
+                    Este es tu panel principal.
+                    Desde aquí puedes acceder a las funciones del sistema.
+                </p>
+            </div>
 
-            <?php if (tienePermiso('categoria_consultar')): ?>
-                <li><a href="/categorias/listar.php">Categorías</a></li>
-            <?php endif; ?>
+            <span class="etiqueta-rol">
+                <?= escapar($rol) ?>
+            </span>
 
-            <?php if (tienePermiso('equipo_consultar')): ?>
-                <li><a href="/equipos/listar.php">Equipos</a></li>
-            <?php endif; ?>
+        </section>
 
-            <?php if (tienePermiso('reporte_consultar')): ?>
-                <li><a href="/reportes/listar.php">Reportes</a></li>
-            <?php endif; ?>
+        <?php if ($rol_id === 1): ?>
 
-            <?php if (tienePermiso('prestamo_consultar')): ?>
-                <li><a href="/prestamos/listar.php">Préstamos</a></li>
-            <?php endif; ?>
+            <section class="seccion-modulos">
 
-            <?php if (tienePermiso('bitacora_consultar')): ?>
-                <li><a href="/bitacora/listar.php">Bitácora</a></li>
-            <?php endif; ?>
+                <h2>Administración</h2>
 
-        </ul>
+                <p class="descripcion-seccion">
+                    Gestiona los recursos y la información del sistema.
+                </p>
 
-    <?php elseif ($rol_id === 2): ?>
+                <div class="tarjetas">
 
-        <h3>Operaciones</h3>
+                    <?php if (tienePermiso('usuario_consultar')): ?>
+                        <a href="/usuarios/listar.php" class="tarjeta">
+                            <span class="icono-tarjeta">👥</span>
+                            <h3>Usuarios</h3>
+                            <p>Consultar y administrar usuarios del sistema.</p>
+                        </a>
+                    <?php endif; ?>
 
-        <ul>
+                    <?php if (tienePermiso('categoria_consultar')): ?>
+                        <a href="/categorias/listar.php" class="tarjeta">
+                            <span class="icono-tarjeta">📁</span>
+                            <h3>Categorías</h3>
+                            <p>Organizar las categorías de los equipos.</p>
+                        </a>
+                    <?php endif; ?>
 
-            <?php if (tienePermiso('prestamo_consultar')): ?>
-                <li><a href="/prestamos/listar.php">Préstamos</a></li>
-            <?php endif; ?>
+                    <?php if (tienePermiso('equipo_consultar')): ?>
+                        <a href="/equipos/listar.php" class="tarjeta">
+                            <span class="icono-tarjeta">💻</span>
+                            <h3>Equipos</h3>
+                            <p>Consultar y administrar los equipos disponibles.</p>
+                        </a>
+                    <?php endif; ?>
 
-            <?php if (tienePermiso('equipo_consultar')): ?>
-                <li><a href="/equipos/listar.php">Consultar equipos</a></li>
-            <?php endif; ?>
+                    <?php if (tienePermiso('prestamo_consultar')): ?>
+                        <a href="/prestamos/listar.php" class="tarjeta">
+                            <span class="icono-tarjeta">📋</span>
+                            <h3>Préstamos</h3>
+                            <p>Consultar y gestionar los préstamos.</p>
+                        </a>
+                    <?php endif; ?>
 
-        </ul>
+                    <?php if (tienePermiso('reporte_consultar')): ?>
+                        <a href="/reportes/listar.php" class="tarjeta">
+                            <span class="icono-tarjeta">📊</span>
+                            <h3>Reportes</h3>
+                            <p>Consultar y generar reportes del sistema.</p>
+                        </a>
+                    <?php endif; ?>
 
-    <?php endif; ?>
+                    <?php if (tienePermiso('bitacora_consultar')): ?>
+                        <a href="/bitacora/listar.php" class="tarjeta">
+                            <span class="icono-tarjeta">📝</span>
+                            <h3>Bitácora</h3>
+                            <p>Consultar el registro de actividades.</p>
+                        </a>
+                    <?php endif; ?>
 
-    <hr>
+                </div>
 
-    <form action="/logout.php" method="POST">
+            </section>
 
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="<?= htmlspecialchars(
-                $_SESSION['csrf_token_logout'],
-                ENT_QUOTES | ENT_SUBSTITUTE,
-                'UTF-8'
-            ) ?>"
-        >
+        <?php elseif ($rol_id === 2): ?>
 
-        <button type="submit">Cerrar sesión</button>
+            <section class="seccion-modulos">
 
-    </form>
+                <h2>Operaciones</h2>
+
+                <p class="descripcion-seccion">
+                    Accede a las funciones de consulta y gestión de préstamos.
+                </p>
+
+                <div class="tarjetas">
+
+                    <?php if (tienePermiso('prestamo_consultar')): ?>
+                        <a href="/prestamos/listar.php" class="tarjeta">
+                            <span class="icono-tarjeta">📋</span>
+                            <h3>Préstamos</h3>
+                            <p>Consultar y gestionar solicitudes de préstamo.</p>
+                        </a>
+                    <?php endif; ?>
+
+                    <?php if (tienePermiso('equipo_consultar')): ?>
+                        <a href="/equipos/listar.php" class="tarjeta">
+                            <span class="icono-tarjeta">💻</span>
+                            <h3>Consultar equipos</h3>
+                            <p>Revisar los equipos registrados en el sistema.</p>
+                        </a>
+                    <?php endif; ?>
+
+                </div>
+
+            </section>
+
+        <?php endif; ?>
+
+        <footer class="pie-dashboard">
+            <p>SIGEL &copy; <?= date('Y') ?> - Sistema de Gestión de Equipos y Préstamos</p>
+        </footer>
+
+    </main>
 
 </body>
 </html>
-
