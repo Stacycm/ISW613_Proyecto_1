@@ -28,10 +28,8 @@ $finValido = $fin
     && $fin->format('Y-m-d') === $fechaFin;
 
 if (!$inicioValido || !$finValido || $fechaInicio > $fechaFin) {
-
     http_response_code(400);
     exit('El rango de fechas no es válido.');
-
 }
 
 // Función para proteger los datos del CSV
@@ -125,4 +123,3 @@ foreach ($resultados as $equipo) {
 fclose($salida);
 
 exit;
-

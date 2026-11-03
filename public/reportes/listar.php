@@ -88,102 +88,144 @@ if ($fechaInicio !== '' || $fechaFin !== '') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Reporte de préstamos - SIGEL</title>
+
+    <link rel="stylesheet" href="/css/estilos.css">
 </head>
 
 <body>
 
-    <h1>Reporte de equipos más prestados</h1>
+<main class="contenedor contenedor-modulo">
 
-    <p>
-        <a href="../dashboard.php">Volver al dashboard</a>
-    </p>
+    <header class="titulo-modulo">
+        <div>
+            <h1>Reporte de equipos más prestados</h1>
+            <p>Consulta cuáles equipos han tenido más préstamos durante un periodo.</p>
+        </div>
 
-    <form method="GET" action="listar.php">
+        <a href="../dashboard.php" class="boton boton-secundario">
+            Volver al dashboard
+        </a>
+    </header>
 
-        <label for="fecha_inicio">Fecha inicial:</label>
+    <section class="panel-modulo">
 
-        <input
-            type="date"
-            id="fecha_inicio"
-            name="fecha_inicio"
-            value="<?= escapar($fechaInicio) ?>"
-            required
-        >
+        <div class="panel-titulo">
+            <h2>Filtrar reporte</h2>
+        </div>
 
-        <label for="fecha_fin">Fecha final:</label>
+        <form method="GET" action="listar.php" class="formulario-modulo">
 
-        <input
-            type="date"
-            id="fecha_fin"
-            name="fecha_fin"
-            value="<?= escapar($fechaFin) ?>"
-            required
-        >
+            <div class="campo-formulario">
+                <label for="fecha_inicio">Fecha inicial:</label>
 
-        <button type="submit">Generar reporte</button>
+                <input
+                    type="date"
+                    id="fecha_inicio"
+                    name="fecha_inicio"
+                    value="<?= escapar($fechaInicio) ?>"
+                    required
+                >
+            </div>
 
-    </form>
+            <div class="campo-formulario">
+                <label for="fecha_fin">Fecha final:</label>
+
+                <input
+                    type="date"
+                    id="fecha_fin"
+                    name="fecha_fin"
+                    value="<?= escapar($fechaFin) ?>"
+                    required
+                >
+            </div>
+
+            <div class="acciones-formulario">
+                <button type="submit" class="boton boton-principal">
+                    Generar reporte
+                </button>
+            </div>
+
+        </form>
+
+    </section>
 
     <?php if ($error !== ''): ?>
 
-        <p><?= escapar($error) ?></p>
+        <div class="mensaje mensaje-error">
+            <?= escapar($error) ?>
+        </div>
 
     <?php elseif ($fechaInicio !== '' && $fechaFin !== ''): ?>
 
-        <h2>Resultados</h2>
+        <section class="panel-modulo resultados-reporte">
 
-        <p>
-            Periodo:
-            <?= escapar($fechaInicio) ?>
-            al
-            <?= escapar($fechaFin) ?>
-        </p>
+            <div class="panel-titulo">
+                <h2>Resultados</h2>
+            </div>
 
-        <?php if (empty($resultados)): ?>
-
-            <p>No se encontraron equipos prestados en ese periodo.</p>
-
-        <?php else: ?>
-
-            <table border="1" cellpadding="8">
-
-                <thead>
-                    <tr>
-                        <th>Posición</th>
-                        <th>Código</th>
-                        <th>Equipo</th>
-                        <th>Total de préstamos</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-
-                    <?php foreach ($resultados as $indice => $equipo): ?>
-
-                        <tr>
-                            <td><?= $indice + 1 ?></td>
-                            <td><?= escapar($equipo['codigo']) ?></td>
-                            <td><?= escapar($equipo['nombre']) ?></td>
-                            <td><?= (int) $equipo['total_prestamos'] ?></td>
-                        </tr>
-
-                    <?php endforeach; ?>
-
-                </tbody>
-
-            </table>
-
-            <p>
-                <a href="exportar.php?fecha_inicio=<?= urlencode($fechaInicio) ?>&fecha_fin=<?= urlencode($fechaFin) ?>">
-                    Exportar a CSV
-                </a>
+            <p class="periodo-reporte">
+                **Periodo consultado:**
+                <?= escapar($fechaInicio) ?>
+                al
+                <?= escapar($fechaFin) ?>
             </p>
 
-        <?php endif; ?>
+            <?php if (empty($resultados)): ?>
+
+                <p class="mensaje">
+                    No se encontraron equipos prestados en ese periodo.
+                </p>
+
+            <?php else: ?>
+
+                <div class="tabla-contenedor">
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Posición</th>
+                                <th>Código</th>
+                                <th>Equipo</th>
+                                <th>Total de préstamos</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            <?php foreach ($resultados as $indice => $equipo): ?>
+
+                                <tr>
+                                    <td><?= $indice + 1 ?></td>
+                                    <td><?= escapar($equipo['codigo']) ?></td>
+                                    <td><?= escapar($equipo['nombre']) ?></td>
+                                    <td><?= (int) $equipo['total_prestamos'] ?></td>
+                                </tr>
+
+                            <?php endforeach; ?>
+
+                        </tbody>
+                    </table>
+
+                </div>
+
+                <div class="acciones-reporte">
+                    <a
+                        href="exportar.php?fecha_inicio=<?= urlencode($fechaInicio) ?>&fecha_fin=<?= urlencode($fechaFin) ?>"
+                        class="boton boton-secundario"
+                    >
+                        Exportar a CSV
+                    </a>
+                </div>
+
+            <?php endif; ?>
+
+        </section>
 
     <?php endif; ?>
 
+</main>
+
 </body>
 </html>
-
