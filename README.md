@@ -73,7 +73,7 @@ Antes de ejecutar SIGEL, es necesario contar con:
 Clonar el repositorio de Git dentro de la carpeta `htdocs` de XAMPP.
 
 ```bash
-git clone URL_DEL_REPOSITORIO
+git https://github.com/Stacycm/ISW613_Proyecto_1.git
 ```
 
 ### Paso 2. Configurar la base de datos
