@@ -15,6 +15,31 @@ $pdo = require __DIR__ . '/../../app/config/config.php';
 
 $mensaje = '';
 
+// ==========================================
+// REGLA 11: CONSULTAR MÁXIMO DE EQUIPOS
+// ==========================================
+
+$sqlConfiguracion = "SELECT valor
+                     FROM configuracion
+                     WHERE clave = :clave";
+
+$consultaConfiguracion = $pdo->prepare($sqlConfiguracion);
+
+$consultaConfiguracion->execute([
+    'clave' => 'max_equipos_prestamo'
+]);
+
+$maxEquiposPrestamo = filter_var(
+    $consultaConfiguracion->fetchColumn(),
+    FILTER_VALIDATE_INT
+);
+
+// Comprobar que la configuración sea válida
+if ($maxEquiposPrestamo === false || $maxEquiposPrestamo < 1) {
+    http_response_code(500);
+    exit('El máximo de equipos por préstamo no está configurado correctamente.');
+}
+
 // Consultar usuarios activos
 $sqlUsuarios = "SELECT id, nombre, correo
                 FROM usuarios
@@ -82,6 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Eliminar identificadores duplicados
     if ($equipoIdsValidos) {
         $equipoIds = array_map('intval', $equipoIds);
         $equipoIds = array_unique($equipoIds);
@@ -100,6 +126,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $inicio->format('Y-m-d') === $fecha_inicio &&
         $fin->format('Y-m-d') === $fecha_fin;
 
+    // ==========================================
+    // VALIDACIONES INICIALES
+    // ==========================================
+
     if (!$usuario_id || $usuario_id < 1) {
 
         $mensaje = 'Selecciona un usuario válido.';
@@ -111,6 +141,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!$equipoIdsValidos || count($equipoIds) === 0) {
 
         $mensaje = 'Debes seleccionar equipos válidos.';
+
+    // REGLA 11: MÁXIMO DE EQUIPOS POR PRÉSTAMO
+    } elseif (count($equipoIds) > $maxEquiposPrestamo) {
+
+        $mensaje = 'No puedes incluir más de ' .
+                   $maxEquiposPrestamo .
+                   ' equipos en un préstamo.';
 
     } else {
 
@@ -458,7 +495,9 @@ $equiposFormulario = array_map('intval', $equiposFormulario);
                 <label>Selecciona los equipos:</label>
 
                 <p class="ayuda-formulario">
-                    Puedes seleccionar uno o varios equipos disponibles.
+                    Puedes seleccionar un máximo de
+                    <?= htmlspecialchars((string) $maxEquiposPrestamo) ?>
+                    equipos por préstamo.
                 </p>
 
                 <?php if (count($equipos) > 0): ?>
