@@ -171,7 +171,7 @@ SIGEL/
 │   ├── reportes/
 │   ├── bitacora/
 │   │
-│   ├── dashboard.php
+│   ├── index.php
 │   ├── login.php
 │   ├── procesar_login.php
 │   └── logout.php
