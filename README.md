@@ -47,7 +47,7 @@ El operador no tiene acceso a la administración de usuarios, reportes ni bitác
 | Módulo | Descripción |
 |---|---|
 | Inicio de sesión | Autenticación de usuarios y control de acceso. |
-| Dashboard | Panel principal según el rol del usuario. |
+| Index | Panel principal según el rol del usuario. |
 | Usuarios | Administración de usuarios del sistema. |
 | Categorías | Gestión de categorías de equipos. |
 | Equipos | Registro y administración de equipos. |
