@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // Si ya inició sesión, no procesar otro login.
 if (isset($_SESSION['id'])) {
-    header('Location: /dashboard.php');
+    header('Location: /index.php');
     exit;
 }
 
@@ -197,8 +197,9 @@ try {
     // Eliminar token CSRF utilizado.
     unset($_SESSION['csrf_token']);
 
-    // Redirigir al dashboard.
-    header('Location: /dashboard.php');
+
+    // Redirigir al index.
+    header('Location: /index.php');
     exit;
 
 } catch (Throwable $e) {
