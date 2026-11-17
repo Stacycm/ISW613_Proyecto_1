@@ -1,8 +1,6 @@
 <?php
 
-// ==========================================
-// CONFIGURACIÓN DE SESIÓN
-// ==========================================
+//Configuración de la sesión
 
 if (session_status() === PHP_SESSION_NONE) {
 
@@ -20,9 +18,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// ==========================================
-// FUNCIONES PARA COOKIES
-// ==========================================
+//Función para eliminar la cookie de "recordarme" y limpiar la variable $_COOKIE
 
 function eliminarCookieRecordarme(): void
 {
@@ -38,9 +34,7 @@ function eliminarCookieRecordarme(): void
     unset($_COOKIE['recordarme']);
 }
 
-// ==========================================
-// RESTAURAR SESIÓN CON RECORDARME
-// ==========================================
+// Restaurar sesión desde la cookie "recordarme" si no hay sesión activa
 
 if (!isset($_SESSION['id']) && isset($_COOKIE['recordarme'])) {
 
@@ -180,9 +174,7 @@ if (!isset($_SESSION['id']) && isset($_COOKIE['recordarme'])) {
     }
 }
 
-// ==========================================
-// FUNCIÓN PARA REQUERIR INICIO DE SESIÓN
-// ==========================================
+// Función para requerir inicio de sesión
 
 function requiereLogin(): void
 {
@@ -192,9 +184,7 @@ function requiereLogin(): void
     }
 }
 
-// ==========================================
-// FUNCIÓN PARA COMPROBAR PERMISOS
-// ==========================================
+// Función para verificar si el usuario tiene un permiso específico
 
 function tienePermiso(string $permiso): bool
 {

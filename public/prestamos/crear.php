@@ -142,29 +142,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $mensaje = 'Debes seleccionar equipos válidos.';
 
-    // REGLA 11: MÁXIMO DE EQUIPOS POR PRÉSTAMO
-    } elseif (count($equipoIds) > $maxEquiposPrestamo) {
-
-        $mensaje = 'No puedes incluir más de ' .
-                   $maxEquiposPrestamo .
-                   ' equipos en un préstamo.';
-
-    } else {
-
-        try {
-
-            // Iniciar transacción
-            $pdo->beginTransaction();
-
-            // Comprobar que el usuario exista y esté activo
-            $sqlUsuario = "SELECT id
-                           FROM usuarios
-                           WHERE id = :id
-                           AND activo = 1";
-
-            $consultaUsuario = $pdo->prepare($sqlUsuario);
-            $consultaUsuario->execute(['id' => $usuario_id]);
-
             if (!$consultaUsuario->fetch()) {
                 throw new RuntimeException(
                     'El usuario seleccionado no existe o está inactivo.'
