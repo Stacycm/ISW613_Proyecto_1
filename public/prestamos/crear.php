@@ -240,6 +240,7 @@ if (!is_array($equiposFormulario)) {
 }
 $equiposFormulario = array_map('intval', $equiposFormulario);
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
