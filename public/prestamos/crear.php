@@ -106,13 +106,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $marcadores = implode(',', array_fill(0, count($equipoIds), '?'));
 
             // Bloquear el equipo y consultar los días máximos permitidos.
-            $sqlBloqueo = "SELECT e.id, e.estado, c.dias_max_prestamo
-                           FROM equipos e
-                           INNER JOIN categorias c ON c.id = e.categoria_id
-                           WHERE e.id IN ($marcadores)
-                           AND e.eliminado_en IS NULL
-                           ORDER BY e.id
-                           FOR UPDATE";
+            $sqlBloqueo = "SELECT
+                            e.id,
+                            e.estado,
+                            c.dias_max_prestamo
+                        FROM equipos e
+                        INNER JOIN categoria c ON c.id = e.categoria_id
+                        WHERE e.id IN ($marcadores)
+                        AND e.eliminado_en IS NULL
+                        ORDER BY e.id
+                        FOR UPDATE";
+
             $consultaBloqueo = $pdo->prepare($sqlBloqueo);
             $consultaBloqueo->execute($equipoIds);
             $equiposSeleccionados = $consultaBloqueo->fetchAll();
