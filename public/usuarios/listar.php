@@ -115,7 +115,7 @@ $usuarios = $consulta->fetchAll();
                 <p>Sistema de Gestión de Equipos y Laboratorios</p>
             </div>
 
-            <a href="/dashboard.php" class="boton boton-secundario">
+            <a href="/index.php" class="boton boton-secundario">
                 Volver al inicio
             </a>
         </div>

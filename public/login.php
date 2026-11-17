@@ -2,9 +2,9 @@
 
 require_once __DIR__ . '/../app/includes/auth.php';
 
-// Si ya inició sesión, enviarlo al dashboard
+// Si ya inició sesión, enviarlo al index
 if (isset($_SESSION['id'])) {
-    header('Location: /dashboard.php');
+    header('Location: /index.php');
     exit;
 }
 

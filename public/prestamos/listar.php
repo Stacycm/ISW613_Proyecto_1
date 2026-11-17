@@ -218,8 +218,8 @@ function claseEstado(string $estado): string
             <p>Consulta y administra las solicitudes de préstamo de equipos.</p>
         </div>
 
-        <a href="../dashboard.php" class="boton boton-secundario">
-            Volver al dashboard
+        <a href="../index.php" class="boton boton-secundario">
+            Volver al inicio
         </a>
     </header>
 

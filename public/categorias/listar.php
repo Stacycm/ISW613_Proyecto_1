@@ -107,7 +107,7 @@ $categorias = $consulta->fetchAll();
                 <p>Consulta y administra las categorías de los equipos.</p>
             </div>
 
-            <a href="../dashboard.php" class="boton boton-secundario">
+            <a href="../index.php" class="boton boton-secundario">
                 Volver al inicio
             </a>
         </header>

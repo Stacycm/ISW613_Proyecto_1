@@ -104,8 +104,8 @@ if ($fechaInicio !== '' || $fechaFin !== '') {
             <p>Consulta cuáles equipos han tenido más préstamos durante un periodo.</p>
         </div>
 
-        <a href="../dashboard.php" class="boton boton-secundario">
-            Volver al dashboard
+        <a href="../index.php" class="boton boton-secundario">
+            Volver al inicio
         </a>
     </header>
 
